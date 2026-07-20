@@ -1,10 +1,27 @@
 # plan.md — MarketOps (React + FastAPI + MongoDB)
 
 ## 1) Objectives
-- Prove the **core differentiator** works: Claude-powered AI outputs **valid, parseable JSON** for restock, market fit, and revenue projection.
-- Build an MVP web app that covers all required user stories: inventory across markets, compliance tracking w/ reminders, and paid-tier AI tools.
-- Implement the **design outline verbatim** (light-only, palette, Oswald/Karla/Caveat usage, stamp badge constraints).
-- Ship a stable v1 via incremental testing (core POC → v1 app → full E2E).
+- Validate the **core differentiator**: Claude-powered AI outputs **valid, parseable JSON** for:
+  - Restock suggestions
+  - Market fit evaluation
+  - Revenue projection (dense + sparse history)
+- Deliver an MVP web app that covers required user stories:
+  - Multi-market inventory allocation
+  - Compliance tracking w/ expiring/expired statuses
+  - In-app reminder logging (30/14/7 day intervals)
+  - Paid-tier gating for AI tools (dev tier toggle)
+- Implement the **design outline verbatim**:
+  - **Light-only** UI
+  - Specific palette
+  - Fonts: **Oswald** (display), **Karla** (body), **Caveat** (**AI copy only** via `.ai-note`)
+  - **Stamp badge constraints**: rotated stamp badges on Dashboard summaries only; plain pills for list density
+- Ship a stable v1 with end-to-end validation and demo seeding.
+
+**Current status:** MVP shipped.
+- Phase 1 POC complete (all tests pass).
+- Phase 2 full app build complete (backend + frontend).
+- E2E testing complete (testing_agent_v3 overall 98.5% pass; no critical bugs).
+- Demo credentials documented at `/app/memory/test_credentials.md`.
 
 ---
 
@@ -18,19 +35,18 @@
 4. As a vendor, I can get a projected revenue number with rationale and confidence.
 5. As a vendor with sparse history, I see “not enough history” handled safely (no fake precision).
 
-**Steps**
-- Websearch best practices for: Anthropic JSON-mode / tool-use style prompting, schema validation, and guardrails for “JSON only”.
-- Implement `/app/backend/test_core.py`:
-  - Uses `emergentintegrations` + model `claude-sonnet-4-5-20250929`.
-  - Sends 3 prompts with realistic payloads (dense history + sparse history).
-  - Validates with `json.loads` + minimal schema checks:
+**Steps (completed)**
+- Implemented `/app/backend/test_core.py` with:
+  - `emergentintegrations` and Anthropic model (`claude-sonnet-4-6` in implementation).
+  - Strict JSON extraction + `json.loads` parsing.
+  - Minimal schema checks for:
     - Restock: `[{product_id, suggested_qty, rationale, confidence}]`
-    - Market rec: `{market_id, fit_assessment, reason, confidence}`
+    - Market fit: `{market_id, fit_assessment, reason, confidence}`
     - Revenue: `{market_id, market_date, projected_revenue, rationale, confidence}`
-  - Enforces retry strategy on invalid JSON (max 2) + hard fail if still invalid.
-- Output: console summary + exit code 0 only when all validations pass.
+  - Retry strategy on invalid JSON (max 2) and hard fail if still invalid.
+  - Added explicit sparse-history test ensuring `confidence='low'`.
 
-**Gate**: Phase 1 must pass end-to-end locally before any app build.
+**Gate (met)**: Phase 1 passed locally end-to-end (all 4 tests PASS).
 
 ---
 
@@ -43,69 +59,106 @@
 5. As a vendor, I can track compliance items (vendor-wide or per-market) and see expiring/expired states + in-app reminders.
 6. As a free user, AI is locked; as a paid user (dev toggle), I can generate AI insights.
 
-**Backend (FastAPI + Motor)**
-- Create minimal but complete backend structure:
-  - `server.py` (CORS, app init), `auth.py` (bcrypt + JWT), `models.py` (Pydantic), `db.py` (Motor client), `deps.py` (auth dependency).
-  - Routes: `vendors, products, markets, allocations, compliance, ai, dashboard`.
-- Mongo collections (vendor-scoped): `vendors, products, markets, allocations, compliance_items, reminders_log, revenue_projections`.
-- Implement key business logic:
-  - Compliance status: `expired` if < today; `expiring` if within 30 days; else `active`.
-  - Reminder sweep (on dashboard load): write `reminders_log` entries at 30/14/7 days if not already sent.
-  - Market-ready vs action-needed: market is “ready” if all linked compliance items are `active` (and vendor-wide required items are active).
-  - Low-stock warnings: upcoming allocation below product threshold.
-- AI routes (paid-tier gated via `vendor.tier`):
-  - `POST /ai/restock`, `POST /ai/market-fit`, `POST /ai/revenue` using the Phase-1 proven prompt+schema.
-  - Cache strategy MVP: store last AI output per (vendor, market, date) in Mongo; reuse unless inputs changed.
+**Backend (FastAPI + Motor) — completed**
+- Implemented backend structure:
+  - `server.py` (FastAPI + CORS + startup index creation)
+  - `auth.py` (bcrypt + JWT; paid-tier guard)
+  - `models.py` (Pydantic request/response models)
+  - `db.py` (Motor client + indexes)
+  - `ai_client.py` (Claude wrapper with JSON-only enforcement)
+- Implemented routes:
+  - `routes/auth_routes.py`: signup/login/me + tier upgrade/downgrade
+  - `routes/products_routes.py`: CRUD
+  - `routes/markets_routes.py`: CRUD + candidate filtering
+  - `routes/allocations_routes.py`: allocate per market/date + updates
+  - `routes/compliance_routes.py`: CRUD + computed status + sweep
+  - `routes/ai_routes.py`: restock, market-fit, revenue, revenue rollups (**paid-tier gated**)
+  - `routes/dashboard_routes.py`: aggregated stats + market cards + action-needed + reminders
+  - `routes/seed_routes.py`: idempotent demo seed
+- Mongo collections (vendor-scoped):
+  - `vendors, products, markets, allocations, compliance_items, reminders_log, revenue_projections`
+- Key business logic shipped:
+  - Compliance status: `expired` if past; `expiring` if within 30 days; else `active`.
+  - Reminder sweep: creates `reminders_log` entries at 30/14/7 days, deduped.
+  - Market-ready flag: based on vendor-wide + linked compliance items.
+  - Low-stock warning: allocation below product threshold.
+  - AI caching: revenue projections stored per (vendor, market, date); rollups are aggregation of cached values.
 
-**Frontend (React + Tailwind + shadcn/ui)**
-- Global design system:
-  - Force light-only: `color-scheme: light` + white page background.
-  - Tokens: page/canvas/charcoal/stamp-red/crate-green/mustard/line.
-  - Fonts: Oswald (display), Karla (body), Caveat (AI only) + `.ai-note` class.
-  - Components: `CrateCard`, `ProduceTag`, `StampBadge` (Dashboard only), `StatusPill` (Compliance), `StatRow`, `AINote`.
-- Routes:
-  - `/login`, `/signup`
-  - `/` Dashboard: stat row + crate cards + stamp badge verdict; show compliance banner; show 1 AI note slot.
-  - `/markets` My Markets: list + create/edit + enrollment status + “considering” flag.
-  - `/products` Products CRUD + low-stock list.
-  - `/allocate` Allocate: pick market + date; produce-tag grid; update remaining; revenue projection callout.
-  - `/compliance` Compliance: grouped vendor-wide vs per-market; plain pills; document base64 upload.
-  - `/ai-insights` AI Insights: stat row rollups + restock notes + market fit evals; upgrade CTA when free.
-  - `/settings` profile + tier toggle (“Upgrade” flips tier).
-- API client: JWT storage, auth headers, error states (401 redirect to login), loading/empty/sparse-data states.
+**Frontend (React) — completed**
+- Implemented design system (from outline) in `src/index.css`:
+  - Light-only enforced via `color-scheme: light only`.
+  - Palette tokens: page/canvas/charcoal/stamp-red/crate-green/mustard/line.
+  - Fonts loaded: Oswald/Karla/Caveat; `.ai-note` used for AI-generated copy only.
+  - UI primitives: crate cards, produce tags, stamp badges, status pills, stat blocks, AI note block.
+- Implemented auth + API client:
+  - JWT stored in `localStorage`.
+  - Axios interceptor applies token, redirects to `/login` on 401.
+- Implemented routes/screens (8):
+  - `/login` (includes **Try demo account** button → seeds + logs in)
+  - `/signup`
+  - `/` Dashboard: stat row, crate cards, stamp badges, compliance banner, one AI note slot (paid)
+  - `/markets` My Markets: enrolled + candidate lists, CRUD modals, AI fit button (paid)
+  - `/products`: CRUD modals; low-stock styling via produce tags
+  - `/allocate`: market/date selector, bring/remaining edits, AI restock + apply-all, revenue projection callout (paid)
+  - `/compliance`: grouped vendor-wide vs per-market; plain status pills; doc upload; reminders list
+  - `/ai-insights`: paywall for free; paid view includes rollups + restock helper + candidate fit
+  - `/settings`: profile editing + tier toggle (dev upgrade/downgrade)
 
-**Conclude Phase 2**
-- Seed demo data endpoint or script (1 vendor, 2 markets, 6 products, 6 compliance items, 4 allocations).
-- Run testing agent for 1 full E2E pass; fix critical UX/data bugs.
+**Conclude Phase 2 (completed)**
+- Demo seed endpoint added: `POST /api/seed/demo`.
+- Test credentials documented: `/app/memory/test_credentials.md`.
+- E2E testing run via `testing_agent_v3`:
+  - **Overall:** 98.5%
+  - **Backend:** 97.8% (45/46)
+  - **Frontend:** 100% (all pages functional)
+  - No critical bugs; one low-priority note about `.test` email validation (expected behavior).
 
 ---
 
-### Phase 3 — Hardening, UX Polish, and Coverage
+### Phase 3 — Hardening, UX Polish, and Coverage (next-phase / optional)
 **User stories**
 1. As a vendor, I can recover from invalid inputs with clear inline errors.
-2. As a vendor, I can see consistent statuses (ready/action-needed, expiring/expired) across all pages.
-3. As a vendor, AI outputs are clearly labeled and visually distinct (Caveat only for AI).
-4. As a vendor, I can trust projections are cached and don’t spam the AI endpoint.
-5. As a tester, I can log in with seeded credentials and explore a complete demo path.
+2. As a vendor, I can trust projections are cached and don’t spam AI endpoints.
+3. As a vendor, I can manage larger datasets (more products/markets) without performance issues.
+4. As a vendor, I can view/print/export compliance documents and records reliably.
+5. As an admin (future), I can support billing + email reminders with minimal refactor.
 
-**Steps**
-- Refactor prompts + response validation into `utils/ai_client.py` with strict JSON parsing and schema enforcement.
-- Improve caching invalidation rules (inputs change → regenerate).
-- Add pagination/sorting where needed (products, compliance) without breaking design density.
-- Add basic audit fields (`created_at`, `updated_at`) and tighten vendor scoping checks.
-- Run testing agent again; fix regressions; finalize `test_credentials.md`.
+**Steps (revised to reflect current status)**
+- Prompt hardening:
+  - Centralize/extend schema validation (optional JSON-schema level checks).
+  - Improve caching rules for AI outputs (invalidate on relevant changes).
+- Data model hardening:
+  - Add `updated_at` across collections.
+  - Add stricter ownership validations and unique constraints where appropriate (e.g., allocations per product+market+date).
+- UX polish:
+  - Inline form validation (avoid alert-based errors).
+  - Better empty states for new vendors.
+  - Add lightweight loading skeletons for AI calls.
+- Operational upgrades (feature requests / later):
+  - Real Stripe billing (replace tier toggle).
+  - Real email provider for compliance reminders (Resend) + scheduled job.
+  - File storage off Mongo (S3/Supabase Storage) if documents grow.
 
 ---
 
 ## 3) Next Actions
-1. Implement and run **Phase 1**: `/app/backend/test_core.py` until all 3 AI calls pass with strict JSON.
-2. Scaffold backend + frontend in one cohesive pass (Phase 2), starting with dashboard → products → markets → allocate → compliance → AI insights.
-3. Seed demo data + run E2E tests; patch issues before expanding.
+1. **Handoff-ready demo:** Use `/login` → **Try demo account** to explore the full app.
+2. **Confirm feature roadmap:** choose which Phase-3 items matter most (billing, real email, exports, analytics, etc.).
+3. If expanding, prioritize:
+   - Billing + paid gating (Stripe)
+   - Scheduled reminders (real email + cron)
+   - Allocation/reporting enhancements (sales capture, profitability)
 
 ---
 
 ## 4) Success Criteria
-- Phase 1: `test_core.py` passes (valid JSON + sparse-history behavior) consistently.
+- Phase 1: `test_core.py` passes consistently (valid JSON + sparse-history behavior).
 - Phase 2: All listed user stories work end-to-end with vendor data isolation and paid-tier AI gating.
 - Design: Light-only enforced; palette + typography rules adhered to; stamp badge only on Dashboard summaries; `.ai-note` only for AI text.
-- Phase 3: Testing agent reports clean E2E flow with no critical issues; seeded demo + credentials documented.
+- Testing: E2E testing shows no critical bugs; demo seeding + credentials documented.
+
+**Evidence (current build):**
+- Phase 1: PASS
+- Phase 2: COMPLETE
+- E2E: 98.5% overall; no critical issues
+- Demo creds: `/app/memory/test_credentials.md` (`demo@marketops.app` / `DemoVendor2025!`, paid tier)
