@@ -4,7 +4,7 @@ import { SectionHead, Empty, Modal } from '@/components/ui-market';
 import { fmtCurrency } from '@/lib/format';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 
-const empty = { name: '', sku: '', unit: 'piece', unit_price: 0, current_stock: 0, low_stock_threshold: 0 };
+const empty = { name: '', sku: '', unit: 'piece', unit_price: 0, unit_cost: '', current_stock: 0, low_stock_threshold: 0 };
 
 export default function Products() {
   const [items, setItems] = useState([]);
@@ -28,6 +28,7 @@ export default function Products() {
       const payload = {
         ...modal.form,
         unit_price: Number(modal.form.unit_price) || 0,
+        unit_cost: modal.form.unit_cost === '' || modal.form.unit_cost == null ? null : Number(modal.form.unit_cost),
         current_stock: Number(modal.form.current_stock) || 0,
         low_stock_threshold: Number(modal.form.low_stock_threshold) || 0,
       };
@@ -96,10 +97,17 @@ export default function Products() {
               <div className="field"><label>SKU</label><input value={modal.form.sku || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, sku: e.target.value } })} /></div>
               <div className="field"><label>Unit</label><input value={modal.form.unit || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit: e.target.value } })} placeholder="loaf, jar, piece…" /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
               <div className="field"><label>Unit price ($)</label><input type="number" min="0" step="0.01" value={modal.form.unit_price} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_price: e.target.value } })} data-testid="product-price-input" /></div>
+              <div className="field">
+                <label>Unit cost ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
+                <input type="number" min="0" step="0.01" value={modal.form.unit_cost ?? ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_cost: e.target.value } })} placeholder="COGS per unit" data-testid="product-cost-input" />
+              </div>
               <div className="field"><label>Current stock</label><input type="number" min="0" value={modal.form.current_stock} onChange={e => setModal({ ...modal, form: { ...modal.form, current_stock: e.target.value } })} data-testid="product-stock-input" /></div>
               <div className="field"><label>Low threshold</label><input type="number" min="0" value={modal.form.low_stock_threshold} onChange={e => setModal({ ...modal, form: { ...modal.form, low_stock_threshold: e.target.value } })} /></div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: -4 }}>
+              Unit cost is used to estimate profit on the Allocate page. All figures are your own estimates — not accounting or tax advice.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
               <button type="button" className="btn outline" onClick={() => setModal(null)}>Cancel</button>

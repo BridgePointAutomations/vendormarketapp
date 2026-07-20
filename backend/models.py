@@ -23,7 +23,6 @@ class SignupRequest(BaseModel):
     owner_name: Optional[str] = None
     phone: Optional[str] = None
     category: Literal['food', 'craft', 'mixed'] = 'mixed'
-    # New onboarding profile fields (all optional to keep API tolerant)
     city: Optional[str] = None
     primary_market_type: Optional[MarketTypeLiteral] = None
     expected_markets_count: Optional[int] = Field(default=None, ge=0, le=500)
@@ -44,11 +43,9 @@ class VendorPublic(BaseModel):
     category: str
     tier: Literal['free', 'paid'] = 'free'
     created_at: str
-    # Onboarding profile fields
     city: Optional[str] = None
     primary_market_type: Optional[str] = None
     expected_markets_count: Optional[int] = None
-    # Onboarding UX flags
     welcome_dismissed: bool = True
     tour_completed: bool = True
     onboarding_completed: bool = True
@@ -83,6 +80,7 @@ class ProductCreate(BaseModel):
     sku: Optional[str] = None
     unit: Optional[str] = None  # loaf, jar, piece
     unit_price: float = 0
+    unit_cost: Optional[float] = None  # estimated COGS per unit (optional)
     current_stock: float = 0
     low_stock_threshold: float = 0
 
@@ -92,6 +90,7 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     unit: Optional[str] = None
     unit_price: Optional[float] = None
+    unit_cost: Optional[float] = None
     current_stock: Optional[float] = None
     low_stock_threshold: Optional[float] = None
 
@@ -104,6 +103,7 @@ class Product(BaseModel):
     sku: Optional[str] = None
     unit: Optional[str] = None
     unit_price: float = 0
+    unit_cost: Optional[float] = None
     current_stock: float = 0
     low_stock_threshold: float = 0
     created_at: str
@@ -116,13 +116,14 @@ MarketStatus = Literal['considering', 'applied', 'approved', 'active']
 class MarketCreate(BaseModel):
     name: str
     address: Optional[str] = None
-    day_of_week: Optional[str] = None  # Saturday
-    recurrence_pattern: Optional[str] = None  # weekly, biweekly
-    season_start: Optional[str] = None  # ISO date
+    day_of_week: Optional[str] = None
+    recurrence_pattern: Optional[str] = None
+    season_start: Optional[str] = None
     season_end: Optional[str] = None
     category_focus: Optional[str] = None
     is_candidate: bool = False
     status: MarketStatus = 'considering'
+    default_booth_fee: Optional[float] = None  # estimated booth fee per market day
 
 
 class MarketUpdate(BaseModel):
@@ -135,6 +136,7 @@ class MarketUpdate(BaseModel):
     category_focus: Optional[str] = None
     is_candidate: Optional[bool] = None
     status: Optional[MarketStatus] = None
+    default_booth_fee: Optional[float] = None
 
 
 class Market(BaseModel):
@@ -150,6 +152,7 @@ class Market(BaseModel):
     category_focus: Optional[str] = None
     is_candidate: bool = False
     status: MarketStatus = 'considering'
+    default_booth_fee: Optional[float] = None
     created_at: str
 
 
@@ -182,6 +185,30 @@ class Allocation(BaseModel):
     created_at: str
 
 
+# ---------- Market Days (booth fee override + notes per specific date) ----------
+class MarketDayCreate(BaseModel):
+    market_id: str
+    market_date: str  # ISO date YYYY-MM-DD
+    booth_fee: Optional[float] = None  # if None on create, inherits market.default_booth_fee
+    notes: Optional[str] = None
+
+
+class MarketDayUpdate(BaseModel):
+    booth_fee: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class MarketDay(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    id: str
+    vendor_id: str
+    market_id: str
+    market_date: str
+    booth_fee: Optional[float] = None
+    notes: Optional[str] = None
+    created_at: str
+
+
 # ---------- Compliance ----------
 ComplianceType = Literal['permit', 'license', 'insurance', 'tax']
 ComplianceStatus = Literal['active', 'expiring', 'expired']
@@ -190,10 +217,10 @@ ComplianceStatus = Literal['active', 'expiring', 'expired']
 class ComplianceCreate(BaseModel):
     type: ComplianceType
     name: str
-    market_id: Optional[str] = None  # None = vendor-wide
+    market_id: Optional[str] = None
     issue_date: Optional[str] = None
     expiration_date: str
-    document_base64: Optional[str] = None  # data:mime;base64,...
+    document_base64: Optional[str] = None
     document_filename: Optional[str] = None
     notes: Optional[str] = None
 
@@ -228,7 +255,7 @@ class ComplianceItem(BaseModel):
 # ---------- AI ----------
 class AIRestockRequest(BaseModel):
     market_id: str
-    market_date: str  # ISO date
+    market_date: str
 
 
 class AIMarketFitRequest(BaseModel):
@@ -238,4 +265,4 @@ class AIMarketFitRequest(BaseModel):
 class AIRevenueRequest(BaseModel):
     market_id: str
     market_date: str
-    suggested: Optional[List[Dict[str, Any]]] = None  # optional override from restock
+    suggested: Optional[List[Dict[str, Any]]] = None

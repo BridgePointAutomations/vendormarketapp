@@ -1,46 +1,38 @@
 [
   {
-    "content": "Phase 1: Extend vendor models + backfill defaults + PATCH /auth/me/onboarding endpoint",
+    "content": "Phase A: Add unit_cost to product model/routes/frontend form",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Update SignupRequest to accept new profile fields (city, primary_market_type, expected_markets_count)",
+    "content": "Phase A: Add default_booth_fee to market model/routes/frontend form",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Redesign Signup.js as 2-step form with new fields",
+    "content": "Phase A: Create market_days collection + routes (GET/POST/PATCH) with (vendor_id, market_id, market_date) unique index",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Manual test — signup flow + /auth/me/onboarding endpoint",
+    "content": "Phase A: Create P&L compute endpoints (/pnl/day, /pnl/season/:market_id) + shared compute helper",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build WelcomeModal component (once-per-session + welcome_dismissed logic)",
+    "content": "Phase A: Allocate page — P&L card + booth-fee input inline override",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Build OnboardingChecklist component on Dashboard (whole-card dismiss)",
+    "content": "Phase A: Markets page — Season P&L snapshot modal per enrolled market",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Wire WelcomeModal into Layout (shows after login for non-dismissed vendors)",
+    "content": "Phase A: Manual test — booth fee inheritance, unit_cost math, P&L endpoints",
     "status": "completed"
   },
   {
-    "content": "Phase 3: Guided tour overlay (spotlight sidebar stops) with startTour/endTour",
-    "status": "completed"
+    "content": "Phase B: Checklists (getting-started + packing)",
+    "status": "pending"
   },
   {
-    "content": "Phase 3: Optional /onboarding wizard route (all fields required inside wizard)",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Settings additions — Replay tour + Re-run setup wizard buttons",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 4: E2E testing with testing_agent_v3",
-    "status": "in_progress"
+    "content": "Phase C: AI refinements (insufficient_history, profit projection, prompt caching)",
+    "status": "pending"
   }
 ]

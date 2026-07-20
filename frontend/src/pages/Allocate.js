@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { SectionHead, Empty, AINote } from '@/components/ui-market';
 import { fmtCurrency, fmtDate, todayIso } from '@/lib/format';
 import { useAuth } from '@/lib/auth';
-import { Plus, Sparkles, RefreshCw, Trash2 } from 'lucide-react';
+import { Sparkles, RefreshCw, Trash2, DollarSign } from 'lucide-react';
 
 export default function Allocate() {
   const { vendor } = useAuth();
@@ -18,6 +18,9 @@ export default function Allocate() {
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [restock, setRestock] = useState(null);
   const [restockLoading, setRestockLoading] = useState(false);
+  const [pnl, setPnl] = useState(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
+  const [boothFeeInput, setBoothFeeInput] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -41,6 +44,34 @@ export default function Allocate() {
     setRevenue(null);
   };
   useEffect(() => { loadAllocs(); }, [marketId, marketDate]);
+
+  const loadPnl = useCallback(async () => {
+    if (!marketId || !marketDate) return;
+    setPnlLoading(true);
+    try {
+      const { data } = await api.get('/pnl/day', { params: { market_id: marketId, market_date: marketDate } });
+      setPnl(data);
+      // sync input with server-resolved booth fee (may be 0 if none set)
+      setBoothFeeInput(data.booth_fee != null ? String(data.booth_fee) : '');
+    } catch (e) {
+      setPnl(null);
+    } finally {
+      setPnlLoading(false);
+    }
+  }, [marketId, marketDate]);
+  useEffect(() => { loadPnl(); }, [loadPnl, allocs]);
+
+  const saveBoothFee = async () => {
+    if (!marketId || !marketDate) return;
+    const val = boothFeeInput === '' ? null : Number(boothFeeInput);
+    if (val !== null && (Number.isNaN(val) || val < 0)) return;
+    try {
+      await api.post('/market-days', { market_id: marketId, market_date: marketDate, booth_fee: val });
+      await loadPnl();
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to save booth fee');
+    }
+  };
 
   const prodMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
   const allocByProd = useMemo(() => Object.fromEntries(allocs.map(a => [a.product_id, a])), [allocs]);
@@ -165,6 +196,58 @@ export default function Allocate() {
             </div>
           </div>
 
+          {/* Market-Day P&L card */}
+          {pnl && (
+            <div className="canvas-surface" style={{ padding: 20, marginBottom: 20 }} data-testid="pnl-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div className="display-xs text-muted">Estimated market-day P&amp;L</div>
+                  <div className="display-md" style={{ marginTop: 2 }}>
+                    {fmtDate(marketDate)}
+                    {pnl.has_actuals && (
+                      <span className="stamp-badge ready" style={{ fontSize: 10, marginLeft: 10, padding: '4px 8px', transform: 'rotate(-2deg)' }}>actuals logged</span>
+                    )}
+                  </div>
+                </div>
+                <div className="field" style={{ minWidth: 200 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <DollarSign size={11} /> Booth fee (this date)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={boothFeeInput}
+                    onChange={(e) => setBoothFeeInput(e.target.value)}
+                    onBlur={saveBoothFee}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+                    placeholder={currentMarket?.default_booth_fee != null ? `${currentMarket.default_booth_fee} (market default)` : '0'}
+                    data-testid="pnl-booth-fee-input"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 14 }}>
+                <PnlTile label="Revenue" value={fmtCurrency(pnl.revenue)} hint={`${pnl.units_sold} units sold`} testId="pnl-revenue" />
+                <PnlTile label="Booth fee" value={fmtCurrency(pnl.booth_fee)} testId="pnl-booth" />
+                <PnlTile label="Est. COGS" value={fmtCurrency(pnl.cogs)} hint="From unit costs" testId="pnl-cogs" />
+                <PnlTile
+                  label="Est. net profit"
+                  value={fmtCurrency(pnl.net_profit)}
+                  accent={pnl.net_profit >= 0 ? 'positive' : 'negative'}
+                  testId="pnl-net"
+                />
+              </div>
+
+              <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: 12 }}>
+                {pnl.has_actuals
+                  ? 'Based on your logged actual units sold.'
+                  : 'Based on allocated minus remaining. Log actual units sold below for a truer estimate.'}
+                {' '}All figures are estimates from your entries — not tax or accounting advice.
+              </div>
+            </div>
+          )}
+
           {/* Revenue projection callout ABOVE the product grid (per design outline) */}
           {revenue && (
             <AINote testId="revenue-projection" label="REVENUE PROJECTION">
@@ -220,7 +303,7 @@ export default function Allocate() {
                       )}
                     </div>
                     <hr className="dashed-hr" />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                       <div className="field">
                         <label>Bring</label>
                         <input type="number" min="0" defaultValue={allocated}
@@ -244,6 +327,20 @@ export default function Allocate() {
                           data-testid={`alloc-remaining-${p.id}`}
                         />
                       </div>
+                      <div className="field">
+                        <label>Sold</label>
+                        <input type="number" min="0" defaultValue={a?.actual_units_sold ?? ''}
+                          disabled={!a}
+                          placeholder={a ? String(Math.max(0, allocated - remaining)) : ''}
+                          onBlur={(e) => {
+                            const raw = e.target.value;
+                            const v = raw === '' ? null : Number(raw);
+                            if (v === (a?.actual_units_sold ?? null)) return;
+                            upsert(p.id, { actual_units_sold: v });
+                          }}
+                          data-testid={`alloc-sold-${p.id}`}
+                        />
+                      </div>
                     </div>
                     <div style={{ marginTop: 8, fontSize: 12, color: 'var(--charcoal-soft)' }}>
                       {a ? `Value: ${fmtCurrency((Number(allocated) || 0) * (Number(p.unit_price) || 0))}` : 'Not scheduled to bring'}
@@ -256,6 +353,17 @@ export default function Allocate() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function PnlTile({ label, value, hint, accent, testId }) {
+  const valueColor = accent === 'positive' ? 'var(--crate-green)' : accent === 'negative' ? 'var(--stamp-red)' : 'var(--charcoal)';
+  return (
+    <div className="stat-block" data-testid={testId}>
+      <div className="stat-label">{label}</div>
+      <div className="stat-value" style={{ color: valueColor }}>{value}</div>
+      {hint && <div className="stat-hint">{hint}</div>}
     </div>
   );
 }

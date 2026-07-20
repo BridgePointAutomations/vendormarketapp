@@ -21,3 +21,7 @@ async def ensure_indexes():
     await db.compliance_items.create_index('vendor_id')
     await db.reminders_log.create_index([('compliance_item_id', 1), ('days_before', 1)], unique=True)
     await db.revenue_projections.create_index([('vendor_id', 1), ('market_id', 1), ('market_date', 1)], unique=True)
+    # Market days: one doc per (vendor, market, date)
+    await db.market_days.create_index(
+        [('vendor_id', 1), ('market_id', 1), ('market_date', 1)], unique=True
+    )

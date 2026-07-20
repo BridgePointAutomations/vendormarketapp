@@ -1,181 +1,248 @@
-# Plan — Refined Onboarding (2-step Signup + Optional Welcome Modal + Optional Wizard + Optional Tour + Dashboard Checklist)
+# Plan — Onboarding (Complete) + V2 Core Features (P&L + Checklists + AI Refinements)
 
 ## 1) Objectives
+
+### Onboarding (v1 UX)
 - Collect richer vendor profile data via a lower-friction **2-step signup**.
-- Replace hard onboarding gates with **optional, persistent nudges**:
-  - A **Welcome modal** that appears once per session until dismissed.
-  - A **Dashboard “Set up your stall” checklist** that stays visible until dismissed or completed.
-  - An **optional setup wizard** (guided first market/product/compliance) accessible from the modal/checklist.
-  - An **optional guided tour** (spotlight tooltips) user-initiated from the modal/checklist/Settings.
-- Preserve backward compatibility: existing vendors should **not be nagged** by new onboarding UI.
+- Use **optional, persistent nudges** (no hard gates):
+  - **Welcome modal** shown once per session until vendor dismisses.
+  - **Dashboard “Set up your stall” checklist** (whole-card dismiss).
+  - **Optional setup wizard** accessible anytime.
+  - **Optional guided tour** user-initiated and replayable.
+- Preserve backward compatibility: existing vendors should **not be nagged**.
 - Maintain MarketOps stamp/paper aesthetic and avoid new UI libraries.
 
+### V2 Core Tracking (Free tier)
+- Add basic profitability clarity:
+  - **Per-market-day estimated P&L** answering: *“Did I make money at this market today?”*
+  - **Season view per market**: total estimated net profit across logged dates.
+- Add habit-forming workflows:
+  - **Getting-started checklist** for new vendors (generic orientation, no legal advice).
+  - **Packing checklist per market** with per-date reset after market date passes.
+
+### AI Refinements (Paid tier only)
+- Improve AI outputs while keeping tracking features fully functional without Claude:
+  - Explicit **insufficient-history** state (no low-confidence guessing).
+  - Include booth fee + unit cost context for projected profit.
+  - Cache AI outputs to avoid recomputation.
+  - Use **prompt caching** if supported by the current Anthropic integration; otherwise rely on DB result caching.
+
 **Status / progress so far**
-- ✅ Existing app has Signup/Login/Dashboard, CRUD for Markets/Products/Compliance/Allocations, AI integration, and Settings.
-- ⏳ Onboarding refinement work (this plan) is pending implementation.
+- ✅ Onboarding refinement is fully implemented and manually verified via screenshots:
+  - 2-step signup with profile fields
+  - Welcome modal (once/session + persistent dismissal)
+  - Dashboard onboarding checklist
+  - Optional guided tour overlay
+  - Optional setup wizard at `/onboarding`
+  - Settings: replay tour, run wizard, restore checklist, re-show welcome
+- ✅ Backend supports onboarding flags via `PATCH /auth/me/onboarding`.
+- ⏳ V2 work has started:
+  - **Phase A: Per-market-day P&L** — **IN PROGRESS**
+  - Phases B/C pending
 
 ---
 
 ## 2) Implementation Steps
 
-### Phase 1 — Data + API + 2-step Signup (No gates)
-**User stories**
-1. As a new vendor, I can sign up quickly (2 steps) while still providing key business context.
-2. As an existing vendor, I am not interrupted by new onboarding prompts.
-3. As the app, I can persist onboarding UI preferences per vendor.
-
-**Backend (Phase 1)**
-- Extend vendor schema (non-breaking):
-  - Profile fields: `city`, `primary_market_type`, `expected_markets_count`
+### Phase 1 — Onboarding (COMPLETE)
+**Delivered**
+- Backend
+  - Vendor profile fields: `city`, `primary_market_type`, `expected_markets_count`
   - Onboarding UX flags: `welcome_dismissed`, `tour_completed`, `onboarding_completed`, `checklist_dismissed`
-- Defaults / backfill behavior:
-  - **Existing vendors** (missing fields):
-    - `welcome_dismissed=true` (do not nag)
-    - `tour_completed=true` (do not auto-tour; tour is optional anyway)
-    - `onboarding_completed=true` (informational)
-    - `checklist_dismissed=true` or `false`? (default **true** recommended to avoid new UI surprises; confirm during build)
-  - **New signups**:
-    - `welcome_dismissed=false`
-    - `tour_completed=false`
-    - `onboarding_completed=false`
-    - `checklist_dismissed=false`
-- Update models:
-  - `SignupRequest` to accept new profile fields.
-  - `VendorPublic` / `VendorUpdate` to return/patch these fields.
-- Add endpoint:
-  - `PATCH /auth/me/onboarding` to update any subset of:
-    - `welcome_dismissed`, `tour_completed`, `onboarding_completed`, `checklist_dismissed`
+  - Endpoint: `PATCH /auth/me/onboarding`
+  - Backfill defaults for legacy vendors to avoid nagging
+- Frontend
+  - 2-step Signup UI
+  - Welcome modal (once per session)
+  - Dashboard checklist (whole-card dismiss)
+  - Optional guided tour overlay
+  - Optional wizard (`/onboarding`) with required fields inside steps
+  - Settings controls for onboarding UX
 
-**Frontend (Phase 1)**
-- Update `Signup` to **2-step UI**:
-  - Step 1: `email`, `password`
-  - Step 2: `business_name`, `city`, `primary_market_type`, `expected_markets_count`, `owner_name`, `phone`, `category`
-- Wire new fields end-to-end to `/auth/signup`.
-- Validation:
-  - `expected_markets_count` numeric and sane (min 0).
-
-**Phase 1 test pass**
-- New signup persists new fields and returns vendor public model with expected defaults.
-- Existing vendor login is unaffected and not nagged.
+**Verification**
+- Manual verification via screenshots:
+  - Welcome modal shows once per session
+  - Checklist updates and can be dismissed
+  - Tour spotlights sidebar nav elements
+  - Wizard stepper and validations work
+  - Existing/demo vendors are not interrupted
 
 ---
 
-### Phase 2 — Welcome Modal + Dashboard Checklist (Persistent nudges)
+### Phase A — Per-Market-Day P&L (Free tier) — IN PROGRESS
+**Purpose**
+- Answer: *“Did I make money at this market today?”* using vendor-entered estimated inputs.
+
 **User stories**
-1. As a new vendor, after signup/login I see a clear next step without being blocked.
-2. As a vendor, I can dismiss onboarding prompts permanently if I want.
-3. As a vendor, I see a checklist that updates automatically as I complete setup tasks.
+1. As a vendor, I can set a **default booth fee** on a market.
+2. As a vendor, I can override booth fee per specific market date.
+3. As a vendor, I can optionally track **unit cost** per product.
+4. As a vendor, after logging remaining stock / units sold, I can see an estimated market-day P&L.
+5. As a vendor, I can see season-to-date estimated profit per market.
 
-**Welcome modal (once per session)**
-- Show rule:
-  - Display if vendor `welcome_dismissed=false` **and** sessionStorage flag `welcome_seen_this_session` is not set.
-  - On show, set `sessionStorage.welcome_seen_this_session=true`.
-- Modal CTAs:
-  - Primary: **Take the tour**
-  - Secondary: **Set up my first market** (goes to optional wizard)
-  - Close: **Maybe later** (closes; does **not** set `welcome_dismissed=true`; will show next session)
-  - Checkbox: **Don’t show this again** (on close sets `welcome_dismissed=true`)
-- Auto-dismiss logic (confirmed):
-  - Clicking **Take the tour** OR **Set up my first market** auto-sets `welcome_dismissed=true` via `PATCH /auth/me/onboarding`.
+**Schema additions (Mongo collections / fields)**
+- Products: add optional `unit_cost` (numeric).
+- Markets: add optional `default_booth_fee` (numeric).
+- New collection: `market_days`
+  - `id`, `vendor_id`, `market_id`, `market_date` (YYYY-MM-DD)
+  - `booth_fee` (numeric; default from market)
+  - `notes` (optional)
+  - `created_at`
+  - Unique constraint: `(vendor_id, market_id, market_date)` (enforced via index).
 
-**Dashboard checklist (whole-card dismiss only)**
-- New component: “Set up your stall” card at top of Dashboard.
-- Visible when:
-  - `checklist_dismissed=false` AND (optionally) there are incomplete items.
-- Dismiss behavior:
-  - Header “×” hides entire card forever: sets `checklist_dismissed=true`.
-- Items (auto-checked by real data):
-  - Add a market (based on `/markets` count)
-  - Add a product (based on `/products` count)
-  - Add compliance (based on `/compliance` count) — recommended
-  - Create first allocation (based on `/allocations` for upcoming date)
-  - Take the tour (based on `tour_completed` flag)
-- Each item deep-links to the relevant page or triggers the tour.
+**Business logic**
+- P&L (all labeled **Estimate**; no accounting/tax claims):
+  - `units_sold` per allocation:
+    - prefer `actual_units_sold` if present
+    - else fallback to `max(0, allocated_qty - remaining_qty)`
+  - `revenue = Σ(units_sold × unit_price)`
+  - `cogs = Σ(units_sold × unit_cost)` (unit_cost optional → treat missing as 0)
+  - `net = revenue − booth_fee − cogs`
+
+**API additions**
+- `GET /market-days` (filter by `market_id`, `market_date`)
+- `POST /market-days` (create/upsert by `(vendor_id, market_id, market_date)`)
+- `PATCH /market-days/{id}`
+- `GET /pnl/day` (params: `market_id`, `market_date`) → returns itemized revenue/cogs/booth_fee/net + per-product breakdown
+- `GET /pnl/season/{market_id}` → totals across all market dates that have logged allocations/actuals
+
+**UI changes**
+- Allocate page:
+  - Booth fee input for selected market/date:
+    - auto-inherit from `market.default_booth_fee` for new market day rows
+    - allow override per date
+  - Estimated P&L card visible when allocations exist (and/or when any actuals/remaining are logged)
+  - Copy: “All figures are estimates based on what you enter. Not tax or accounting advice.”
+- Markets page:
+  - Add `default_booth_fee` field in market modal
+  - Season snapshot modal for each enrolled market (season net profit)
+
+**Phase A test pass**
+- Market default booth fee saves and is returned.
+- Market day booth fee inherits and can override.
+- Product unit cost saves and is used in P&L.
+- P&L computation matches formula and uses correct units_sold priority.
 
 ---
 
-### Phase 3 — Optional Setup Wizard Route + Optional Guided Tour + Settings replay
+### Phase B — Checklists (Free tier) — PENDING
+**Purpose**
+- Help new vendors set up correctly and create a weekly “packing” habit.
+
 **User stories**
-1. As a vendor, I can choose a guided setup wizard when I want structured onboarding.
-2. As a vendor, I can take (or replay) a guided tour at any time.
+1. As a new vendor, I get a seeded **getting-started** checklist.
+2. As a vendor, I can create a reusable **packing template** per market.
+3. As a vendor, before each market day I can check items off; after the market passes, the list resets.
+4. As a vendor, the Dashboard shows packing completion status for my next market day.
+5. As a vendor, I can optionally link a getting-started checklist item to a tracked compliance document.
 
-**Optional setup wizard**
-- Route: `/onboarding` (not gated; accessible any time).
-- Entry points:
-  - Welcome modal: “Set up my first market”
-  - Dashboard checklist: “Add your first market / product / compliance” can link to wizard or respective pages (decide per UX)
-  - Settings: “Run setup wizard”
-- Steps (linear; **optional overall**, but within wizard steps enforce required fields):
-  1. Welcome
-  2. Add first market (**required fields**: `name`, `day_of_week`, `address`)
-  3. Add first product (**required fields**: `name`, `unit`, `unit_price`, `current_stock`)
-  4. Add first compliance item (optional step; but if user chooses to add, apply standard validations)
-  5. Done → set `onboarding_completed=true`
+**Schema (Mongo collections)**
+- `checklists`
+  - `id`, `vendor_id`, `market_id` (nullable), `type` in `('getting_started','packing')`, `name`, `created_at`
+- `checklist_items`
+  - `id`, `checklist_id`, `label`, `sort_order`, `checked` (template default), `compliance_item_id` (optional), `created_at`
 
-**Optional guided tour (no new libs)**
-- User-initiated only (no automatic trigger):
-  - Welcome modal “Take the tour”
-  - Checklist item “Take the tour”
-  - Settings “Replay tour”
-- 4-stop spotlight tour (targets may adjust to final UI):
-  1. Markets section / “Manage”
-  2. Products entry point
-  3. Compliance banner/section
-  4. Allocate entry point
-- Completion:
-  - On finish or skip: set `tour_completed=true`.
+**Seeding on signup**
+- Create vendor-wide checklist (`type='getting_started'`) with generic items:
+  - Vendor license
+  - Liability insurance
+  - Market application
+  - Sales tax registration
+  - Basic equipment
+- Copy must be jurisdiction-neutral and explicitly framed as orientation guidance (not legal advice).
 
-**Settings additions**
-- Add controls:
-  - “Replay tour” (sets `tour_completed=false` then starts tour, or directly starts tour without changing flag)
-  - “Run setup wizard”
-  - Optional: “Show welcome modal again” (sets `welcome_dismissed=false`) (nice-to-have)
+**Packing checklist behavior**
+- One packing template per market (recommended default: create on first visit / first market add).
+- Per-market-date checklist instance behavior:
+  - Reset at **midnight the day after** `market_date`.
+  - Implementation approach:
+    - Store checks per `(checklist_id, market_date, item_id)` in a separate structure *or*
+    - Derive “current” checked state for the active upcoming date and clear state when date is in the past.
+  - (Exact data modeling to be finalized during implementation to guarantee reset correctness.)
+
+**Dashboard integration**
+- Surface packing checklist completion for next upcoming market day:
+  - “Packing: 7/12 complete for Saturday – Shaker Square”
+  - Link to open that market’s packing checklist for the date.
+
+**Phase B test pass**
+- Getting-started checklist auto-created on new signup.
+- Packing checklist checks persist for a date, reset after date passes.
+- Dashboard accurately reflects completion for next market day.
 
 ---
 
-### Phase 4 — E2E testing + polish
-**User stories**
-1. As a vendor, onboarding UI never blocks me from using the app.
-2. As a vendor, prompts are helpful but not annoying.
-3. As the app, I handle API failures gracefully.
+### Phase C — AI Refinements (Paid tier only) — PENDING
+**Guiding constraints**
+- AI outputs are advisory only; never auto-apply without user action.
+- Core tracking features must work fully if Claude is unavailable (graceful degradation).
 
-**Testing**
-- Add/extend tests for:
-  - Signup 2-step and new fields persistence
-  - Welcome modal session behavior (once per session)
-  - Welcome modal dismissal logic and vendor flag persistence
-  - Checklist display, deep links, and whole-card dismiss
-  - Wizard required fields and completion flag
-  - Tour completion flag + replay from Settings
+**3a. Restock suggestions**
+- Add explicit `insufficient_history` state when allocation history rows < N (recommend N=3 market dates).
+- Never guess when insufficient.
 
-**Polish**
-- Clear error banners + retry on wizard step submissions.
-- Keep all UI consistent with the stamp/paper design system.
-- Ensure `/auth/me` always returns all onboarding flags with sane defaults.
+**3c. Projected revenue/profit per market day**
+- Extend payload to include:
+  - `unit_cost` per product
+  - `booth_fee` (from market_days or market default)
+- Return structured JSON including `projected_profit` in addition to `projected_revenue`.
+- Cache results in `revenue_projections` (already exists) and avoid recompute on every page view.
+
+**3d. Season rollup per market**
+- Pure aggregation (no AI call):
+  - Blend projections with actuals where available:
+    - actual revenue = Σ(units_sold × unit_price)
+  - Provide per-market trend vs prior weeks.
+
+**Prompt caching recommendation**
+- Default: **DB-level result caching** (always safe, already partially implemented).
+- Additionally: attempt Anthropic prompt caching (`cache_control`) **if** `emergentintegrations` supports passing through caching directives.
+  - If unsupported, do not block; ship DB caching only.
+
+**Phase C test pass**
+- Restock returns “not enough history yet” state correctly.
+- Revenue endpoint returns projected profit and uses unit_cost + booth_fee.
+- Rollup includes both projections and actuals.
+- AI downtime does not break any non-AI flows.
 
 ---
 
 ## 3) Next Actions
-1. Implement backend vendor schema extensions + `PATCH /auth/me/onboarding` + safe defaults/backfill behavior.
-2. Update Signup to 2-step and wire new profile fields end-to-end.
-3. Implement Welcome modal (once per session) + persistence rules.
-4. Implement Dashboard checklist card (dynamic completion + whole-card dismiss).
-5. Implement optional `/onboarding` wizard route (required fields inside wizard) + set `onboarding_completed=true`.
-6. Implement optional guided tour overlay + Settings replay controls.
-7. Run E2E/regression tests; fix until stable.
+1. **Finish Phase A**:
+   - Add `unit_cost` to product model/routes + UI
+   - Add `default_booth_fee` to market model/routes + UI
+   - Add `market_days` collection, routes, and indexes
+   - Implement P&L compute endpoints and Allocate UI card
+   - Add Markets “season snapshot” modal
+2. Phase A validation pass (manual + basic tests).
+3. Implement **Phase B** checklists (schema + seeding + UI + dashboard surfacing).
+4. Implement **Phase C** AI refinements (history thresholds, profit projection, caching, rollups).
 
 ---
 
 ## 4) Success Criteria
-- ✅ No hard gating: vendors can always access the app immediately after signup/login.
-- ✅ Signup saves: `business_name`, `city`, `primary_market_type`, `expected_markets_count` (plus existing fields).
-- ✅ Welcome modal:
-  - Shows **once per session** until `welcome_dismissed=true`.
-  - Clicking **Take the tour** or **Set up my first market** sets `welcome_dismissed=true`.
-- ✅ Dashboard checklist:
-  - Persists until dismissed via header “×” (whole-card dismiss) or completion.
-  - Reflects real completion state without manual refresh.
-- ✅ Setup wizard is optional, but enforces required fields for market/product inside the wizard.
-- ✅ Tour is optional, user-initiated, and completion sets `tour_completed=true`.
-- ✅ Existing vendors are not nagged by new onboarding UI (welcome defaults to dismissed).
-- ✅ All tests pass; no regressions in auth, CRUD, or dashboard loading.
+
+### Onboarding
+- ✅ No hard gating.
+- ✅ Welcome modal once per session until dismissal.
+- ✅ Checklist is persistent and dismissible.
+- ✅ Wizard and tour are optional and replayable.
+- ✅ Existing vendors are not nagged.
+
+### Phase A — P&L (Free)
+- Vendor can set market `default_booth_fee` and override per market day.
+- Vendor can set product `unit_cost`.
+- Allocate page shows estimated revenue/COGS/booth fee/net for a market date.
+- Season view shows total net profit per market.
+- All profitability copy is clearly labeled **Estimate** with no accounting/tax claims.
+
+### Phase B — Checklists (Free)
+- Getting-started checklist auto-seeded on signup with generic orientation items.
+- Packing checklist template per market and per-date checkoff.
+- Packing checklist resets at midnight the day after market date.
+- Dashboard shows next market packing completion status.
+
+### Phase C — AI (Paid)
+- Restock and projections never fabricate data when history is insufficient.
+- Revenue projections include profit when cost/fees exist.
+- AI responses are cached; core app works without Claude.

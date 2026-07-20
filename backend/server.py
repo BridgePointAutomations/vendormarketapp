@@ -17,6 +17,8 @@ from routes.compliance_routes import router as compliance_router  # noqa: E402
 from routes.ai_routes import router as ai_router  # noqa: E402
 from routes.dashboard_routes import router as dashboard_router  # noqa: E402
 from routes.seed_routes import router as seed_router  # noqa: E402
+from routes.market_days_routes import router as market_days_router  # noqa: E402
+from routes.pnl_routes import router as pnl_router  # noqa: E402
 
 app = FastAPI(title='MarketOps API')
 api_router = APIRouter(prefix='/api')
@@ -40,6 +42,8 @@ api_router.include_router(compliance_router)
 api_router.include_router(ai_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(seed_router)
+api_router.include_router(market_days_router)
+api_router.include_router(pnl_router)
 
 app.include_router(api_router)
 
