@@ -6,6 +6,7 @@ import { fmtCurrency, fmtDate } from '@/lib/format';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
+import PackingNextCard from '@/components/PackingNextCard';
 
 export default function Dashboard() {
   const { vendor } = useAuth();
@@ -62,6 +63,8 @@ export default function Dashboard() {
       </div>
 
       <OnboardingChecklist />
+
+      <PackingNextCard />
 
       {anyExpiring && (
         <div className="banner danger" style={{ marginBottom: 20 }} data-testid="dashboard-alert-banner">

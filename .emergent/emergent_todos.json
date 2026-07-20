@@ -1,34 +1,26 @@
 [
   {
-    "content": "Phase A: Add unit_cost to product model/routes/frontend form",
-    "status": "completed"
+    "content": "Phase B: Backend — collections + models + routes for checklists, checklist_items, packing_checks",
+    "status": "in_progress"
   },
   {
-    "content": "Phase A: Add default_booth_fee to market model/routes/frontend form",
-    "status": "completed"
+    "content": "Phase B: Auto-seed getting-started checklist on new signup + lazy-create for existing vendors on first GET",
+    "status": "pending"
   },
   {
-    "content": "Phase A: Create market_days collection + routes (GET/POST/PATCH) with (vendor_id, market_id, market_date) unique index",
-    "status": "completed"
+    "content": "Phase B: /api/checklists/packing/next-day endpoint for Dashboard surfacing",
+    "status": "pending"
   },
   {
-    "content": "Phase A: Create P&L compute endpoints (/pnl/day, /pnl/season/:market_id) + shared compute helper",
-    "status": "completed"
+    "content": "Phase B: Frontend Checklists page (getting-started + per-market packing templates + per-date checks)",
+    "status": "pending"
   },
   {
-    "content": "Phase A: Allocate page — P&L card + booth-fee input inline override",
-    "status": "completed"
+    "content": "Phase B: Dashboard packing status card + nav entry",
+    "status": "pending"
   },
   {
-    "content": "Phase A: Markets page — Season P&L snapshot modal per enrolled market",
-    "status": "completed"
-  },
-  {
-    "content": "Phase A: Manual test — booth fee inheritance, unit_cost math, P&L endpoints",
-    "status": "completed"
-  },
-  {
-    "content": "Phase B: Checklists (getting-started + packing)",
+    "content": "Phase B: Manual test — seed on signup, packing checks per date, reset behavior across dates",
     "status": "pending"
   },
   {

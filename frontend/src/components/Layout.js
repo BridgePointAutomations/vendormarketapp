@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MapPin, Package, ClipboardList, ShieldCheck, Sparkles, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, MapPin, Package, ClipboardList, ShieldCheck, Sparkles, Settings, LogOut, CheckSquare } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import WelcomeModal from '@/components/WelcomeModal';
 import GuidedTour from '@/components/GuidedTour';
@@ -10,6 +10,7 @@ const NAV = [
   { to: '/products', label: 'Products', icon: Package, testId: 'nav-products' },
   { to: '/allocate', label: 'Allocate', icon: ClipboardList, testId: 'nav-allocate' },
   { to: '/compliance', label: 'Compliance', icon: ShieldCheck, testId: 'nav-compliance' },
+  { to: '/checklists', label: 'Checklists', icon: CheckSquare, testId: 'nav-checklists' },
   { to: '/ai-insights', label: 'AI Insights', icon: Sparkles, testId: 'nav-ai' },
   { to: '/settings', label: 'Settings', icon: Settings, testId: 'nav-settings' },
 ];

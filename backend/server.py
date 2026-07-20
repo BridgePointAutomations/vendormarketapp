@@ -19,6 +19,7 @@ from routes.dashboard_routes import router as dashboard_router  # noqa: E402
 from routes.seed_routes import router as seed_router  # noqa: E402
 from routes.market_days_routes import router as market_days_router  # noqa: E402
 from routes.pnl_routes import router as pnl_router  # noqa: E402
+from routes.checklists_routes import router as checklists_router  # noqa: E402
 
 app = FastAPI(title='MarketOps API')
 api_router = APIRouter(prefix='/api')
@@ -44,6 +45,7 @@ api_router.include_router(dashboard_router)
 api_router.include_router(seed_router)
 api_router.include_router(market_days_router)
 api_router.include_router(pnl_router)
+api_router.include_router(checklists_router)
 
 app.include_router(api_router)
 

@@ -13,6 +13,7 @@ import Compliance from '@/pages/Compliance';
 import AIInsights from '@/pages/AIInsights';
 import Settings from '@/pages/Settings';
 import OnboardingWizard from '@/pages/OnboardingWizard';
+import Checklists from '@/pages/Checklists';
 
 function Protected({ children }) {
   const { vendor, loading } = useAuth();
@@ -48,6 +49,7 @@ function App() {
               <Route path="/products" element={<Protected><Products /></Protected>} />
               <Route path="/allocate" element={<Protected><Allocate /></Protected>} />
               <Route path="/compliance" element={<Protected><Compliance /></Protected>} />
+              <Route path="/checklists" element={<Protected><Checklists /></Protected>} />
               <Route path="/ai-insights" element={<Protected><AIInsights /></Protected>} />
               <Route path="/settings" element={<Protected><Settings /></Protected>} />
               <Route path="/onboarding" element={<Protected><OnboardingWizard /></Protected>} />
