@@ -12,6 +12,9 @@ def _uid() -> str:
     return str(uuid.uuid4())
 
 
+MarketTypeLiteral = Literal['farmers', 'flea', 'popup', 'craft', 'mixed']
+
+
 # ---------- Vendor / Auth ----------
 class SignupRequest(BaseModel):
     email: EmailStr
@@ -20,6 +23,10 @@ class SignupRequest(BaseModel):
     owner_name: Optional[str] = None
     phone: Optional[str] = None
     category: Literal['food', 'craft', 'mixed'] = 'mixed'
+    # New onboarding profile fields (all optional to keep API tolerant)
+    city: Optional[str] = None
+    primary_market_type: Optional[MarketTypeLiteral] = None
+    expected_markets_count: Optional[int] = Field(default=None, ge=0, le=500)
 
 
 class LoginRequest(BaseModel):
@@ -37,6 +44,15 @@ class VendorPublic(BaseModel):
     category: str
     tier: Literal['free', 'paid'] = 'free'
     created_at: str
+    # Onboarding profile fields
+    city: Optional[str] = None
+    primary_market_type: Optional[str] = None
+    expected_markets_count: Optional[int] = None
+    # Onboarding UX flags
+    welcome_dismissed: bool = True
+    tour_completed: bool = True
+    onboarding_completed: bool = True
+    checklist_dismissed: bool = True
 
 
 class VendorUpdate(BaseModel):
@@ -44,6 +60,16 @@ class VendorUpdate(BaseModel):
     owner_name: Optional[str] = None
     phone: Optional[str] = None
     category: Optional[Literal['food', 'craft', 'mixed']] = None
+    city: Optional[str] = None
+    primary_market_type: Optional[MarketTypeLiteral] = None
+    expected_markets_count: Optional[int] = Field(default=None, ge=0, le=500)
+
+
+class OnboardingFlagsUpdate(BaseModel):
+    welcome_dismissed: Optional[bool] = None
+    tour_completed: Optional[bool] = None
+    onboarding_completed: Optional[bool] = None
+    checklist_dismissed: Optional[bool] = None
 
 
 class AuthResponse(BaseModel):

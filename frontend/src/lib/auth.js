@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from './api';
 
 const AuthCtx = createContext(null);
@@ -51,8 +51,28 @@ export const AuthProvider = ({ children }) => {
     setVendor(data);
   };
 
+  /**
+   * Update one or more onboarding UX flags on the current vendor.
+   * flags = { welcome_dismissed?, tour_completed?, onboarding_completed?, checklist_dismissed? }
+   * Optimistically updates local state then syncs with server.
+   */
+  const updateOnboarding = async (flags) => {
+    if (!flags || Object.keys(flags).length === 0) return vendor;
+    // Optimistic
+    setVendor((prev) => (prev ? { ...prev, ...flags } : prev));
+    try {
+      const { data } = await api.patch('/auth/me/onboarding', flags);
+      setVendor(data);
+      return data;
+    } catch (e) {
+      // Roll back by re-fetching
+      await refresh();
+      throw e;
+    }
+  };
+
   return (
-    <AuthCtx.Provider value={{ vendor, loading, login, signup, logout, refresh, upgrade, downgrade, setVendor }}>
+    <AuthCtx.Provider value={{ vendor, loading, login, signup, logout, refresh, upgrade, downgrade, setVendor, updateOnboarding }}>
       {children}
     </AuthCtx.Provider>
   );

@@ -1,6 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MapPin, Package, ClipboardList, ShieldCheck, Sparkles, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import WelcomeModal from '@/components/WelcomeModal';
+import GuidedTour from '@/components/GuidedTour';
 
 const NAV = [
   { to: '/', label: 'Dashboard', end: true, icon: LayoutDashboard, testId: 'nav-dashboard' },
@@ -66,6 +68,8 @@ export default function Layout({ children }) {
       <main className="app-content">
         {children}
       </main>
+      <WelcomeModal />
+      <GuidedTour />
     </div>
   );
 }

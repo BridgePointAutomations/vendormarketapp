@@ -1,26 +1,46 @@
 [
   {
-    "content": "Phase 1: Core AI POC (Claude JSON layer)",
+    "content": "Phase 1: Extend vendor models + backfill defaults + PATCH /auth/me/onboarding endpoint",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Backend — all routes + AI + dashboard",
+    "content": "Phase 1: Update SignupRequest to accept new profile fields (city, primary_market_type, expected_markets_count)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend — design system + all 8 screens",
+    "content": "Phase 1: Redesign Signup.js as 2-step form with new fields",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Seed demo data + test credentials",
+    "content": "Phase 1: Manual test — signup flow + /auth/me/onboarding endpoint",
     "status": "completed"
   },
   {
-    "content": "Phase 2: End-to-end testing via testing_agent_v3",
+    "content": "Phase 2: Build WelcomeModal component (once-per-session + welcome_dismissed logic)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: All user stories covered in Development and testing",
+    "content": "Phase 2: Build OnboardingChecklist component on Dashboard (whole-card dismiss)",
     "status": "completed"
+  },
+  {
+    "content": "Phase 2: Wire WelcomeModal into Layout (shows after login for non-dismissed vendors)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3: Guided tour overlay (spotlight sidebar stops) with startTour/endTour",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3: Optional /onboarding wizard route (all fields required inside wizard)",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 3: Settings additions — Replay tour + Re-run setup wizard buttons",
+    "status": "completed"
+  },
+  {
+    "content": "Phase 4: E2E testing with testing_agent_v3",
+    "status": "in_progress"
   }
 ]

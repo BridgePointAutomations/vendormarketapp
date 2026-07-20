@@ -5,6 +5,7 @@ import { StatBlock, StampBadge, AINote } from '@/components/ui-market';
 import { fmtCurrency, fmtDate } from '@/lib/format';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 
 export default function Dashboard() {
   const { vendor } = useAuth();
@@ -59,6 +60,8 @@ export default function Dashboard() {
         <div className="display-xs text-muted">Welcome back</div>
         <h1 className="display-lg">{vendor?.business_name}</h1>
       </div>
+
+      <OnboardingChecklist />
 
       {anyExpiring && (
         <div className="banner danger" style={{ marginBottom: 20 }} data-testid="dashboard-alert-banner">
