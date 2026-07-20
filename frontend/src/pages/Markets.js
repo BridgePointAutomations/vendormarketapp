@@ -73,7 +73,7 @@ export default function Markets() {
         <button className="btn primary tiny" onClick={openCreate} data-testid="add-market-btn"><Plus size={13} /> Add market</button>
       </SectionHead>
       <p style={{ color: 'var(--charcoal-soft)', marginBottom: 24, fontSize: 14 }}>
-        A private list of the markets you attend. Add ones you're considering to have the AI weigh in.
+        A private list of the markets you attend. Add ones you&apos;re considering to have the AI weigh in.
       </p>
 
       {loading && <div className="empty">Loading…</div>}
@@ -93,7 +93,7 @@ export default function Markets() {
 
           <div className="display" style={{ marginBottom: 12 }}>Considering</div>
           {candidates.length === 0 ? (
-            <Empty title="No candidate markets">Add a market you're considering. The AI can weigh in on fit.</Empty>
+            <Empty title="No candidate markets">Add a market you&apos;re considering. The AI can weigh in on fit.</Empty>
           ) : (
             <div className="canvas-surface" style={{ padding: '10px 20px' }} data-testid="candidates-list">
               <div className="row-list">

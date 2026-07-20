@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { StatBlock, StampBadge, AINote } from '@/components/ui-market';
-import { fmtCurrency, fmtDate, daysUntil } from '@/lib/format';
+import { fmtCurrency, fmtDate } from '@/lib/format';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, MapPin, Package, Sparkles, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
 
 export default function Dashboard() {
   const { vendor } = useAuth();
@@ -16,8 +16,6 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        // fire reminder sweep + fetch dashboard in parallel
-        await api.post('/compliance/sweep').catch(() => {});
         const { data } = await api.get('/dashboard');
         setDash(data);
       } finally { setLoading(false); }

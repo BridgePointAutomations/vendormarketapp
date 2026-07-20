@@ -89,7 +89,7 @@ export default function Compliance() {
         <button className="btn primary tiny" onClick={openCreate} data-testid="add-compliance-btn"><Plus size={12} /> Add item</button>
       </SectionHead>
       <p style={{ color: 'var(--charcoal-soft)', marginBottom: 20, fontSize: 14 }}>
-        Track permits, licenses, insurance certs and tax registrations. We'll flag anything expiring within 30 days.
+        Track permits, licenses, insurance certs and tax registrations. We&apos;ll flag anything expiring within 30 days.
       </p>
 
       {anyActionNeeded && (

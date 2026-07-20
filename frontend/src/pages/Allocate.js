@@ -82,10 +82,23 @@ export default function Allocate() {
     if (!restock) return;
     setSaving(true);
     try {
-      for (const s of restock.suggestions) {
-        if (!prodMap[s.product_id]) continue;
-        await upsert(s.product_id, { allocated_qty: Number(s.suggested_qty) || 0, remaining_qty: Number(s.suggested_qty) || 0 });
-      }
+      // Parallel writes (was: sequential for-of await)
+      await Promise.all(
+        restock.suggestions
+          .filter(s => prodMap[s.product_id])
+          .map(s => {
+            const qty = Number(s.suggested_qty) || 0;
+            const existing = allocByProd[s.product_id];
+            if (existing) {
+              return api.patch(`/allocations/${existing.id}`, { allocated_qty: qty, remaining_qty: qty });
+            }
+            return api.post('/allocations', {
+              market_id: marketId, product_id: s.product_id, market_date: marketDate,
+              allocated_qty: qty, remaining_qty: qty,
+            });
+          })
+      );
+      await loadAllocs();
     } finally { setSaving(false); }
   };
 
@@ -127,7 +140,7 @@ export default function Allocate() {
         </div>
       </SectionHead>
 
-      <p style={{ color: 'var(--charcoal-soft)', marginBottom: 20, fontSize: 14 }}>Pick a market and date, then set what you're bringing.</p>
+      <p style={{ color: 'var(--charcoal-soft)', marginBottom: 20, fontSize: 14 }}>Pick a market and date, then set what you&apos;re bringing.</p>
 
       {markets.length === 0 && <Empty title="No enrolled markets">Add a market first (Markets tab).</Empty>}
 

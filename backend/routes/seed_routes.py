@@ -161,7 +161,7 @@ async def seed_demo():
         {'type': 'tax', 'name': 'Ohio Sales Tax Registration', 'market_id': None,
          'issue_date': str(today - timedelta(days=500)), 'expiration_date': str(today - timedelta(days=3))},
     ]
-    from routes.compliance_routes import _compute_status
+    from utils import compute_compliance_status as _compute_status
     for c in compliance_seed:
         await db.compliance_items.insert_one({
             'id': _u(), 'vendor_id': vid,

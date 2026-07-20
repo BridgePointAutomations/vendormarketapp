@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends
 from datetime import date, timedelta
-from collections import defaultdict
 
 from db import db
 from auth import get_current_vendor
-from routes.compliance_routes import _compute_status
+from utils import compute_compliance_status as _compute_status
 
 router = APIRouter(prefix='/dashboard', tags=['dashboard'])
 

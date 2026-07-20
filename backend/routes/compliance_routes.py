@@ -6,25 +6,9 @@ import uuid
 from db import db
 from models import ComplianceItem, ComplianceCreate, ComplianceUpdate
 from auth import get_current_vendor
+from utils import compute_compliance_status as _compute_status, REMINDER_INTERVALS
 
 router = APIRouter(prefix='/compliance', tags=['compliance'])
-
-EXPIRING_WINDOW_DAYS = 30
-REMINDER_INTERVALS = [30, 14, 7]
-
-
-def _compute_status(exp_iso: str) -> str:
-    try:
-        exp = date.fromisoformat(exp_iso[:10])
-    except Exception:
-        return 'active'
-    today = date.today()
-    if exp < today:
-        return 'expired'
-    delta = (exp - today).days
-    if delta <= EXPIRING_WINDOW_DAYS:
-        return 'expiring'
-    return 'active'
 
 
 async def _hydrate_status(items):

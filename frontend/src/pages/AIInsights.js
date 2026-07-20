@@ -22,13 +22,19 @@ export default function AIInsights() {
       setMarkets(data);
       const enrolled = data.filter(m => !m.is_candidate);
       if (enrolled.length) setSelectedMarket(enrolled[0].id);
-      if (vendor?.tier === 'paid') {
-        for (const m of enrolled) {
-          try {
-            const { data: r } = await api.get(`/ai/revenue/rollup/${m.id}`);
-            setRollups(prev => ({ ...prev, [m.id]: r }));
-          } catch {}
+      if (vendor?.tier === 'paid' && enrolled.length) {
+        // Fetch all rollups in parallel (was: sequential await-in-loop)
+        const results = await Promise.allSettled(
+          enrolled.map(m => api.get(`/ai/revenue/rollup/${m.id}`).then(r => [m.id, r.data]))
+        );
+        const map = {};
+        for (const res of results) {
+          if (res.status === 'fulfilled') {
+            const [id, r] = res.value;
+            map[id] = r;
+          }
         }
+        if (Object.keys(map).length) setRollups(prev => ({ ...prev, ...map }));
       }
     })();
   }, [vendor?.tier]);
@@ -70,7 +76,7 @@ export default function AIInsights() {
           <span className="stamp-badge warn" style={{ transform: 'rotate(-3deg)' }}>Paid tier only</span>
           <h2 className="display-md" style={{ marginTop: 18 }}>Unlock the AI helper</h2>
           <p style={{ color: 'var(--charcoal-soft)', margin: '10px 0 22px 0', fontSize: 14 }}>
-            Restock suggestions, market-fit reviews, and revenue projections — all in one place.
+            Restock suggestions, market-fit reviews, and revenue projections &mdash; all in one place.
           </p>
           <Link to="/settings" className="btn primary" data-testid="upgrade-cta">Upgrade in Settings</Link>
         </div>
@@ -161,9 +167,9 @@ export default function AIInsights() {
       </div>
 
       {/* Market fit for candidates */}
-      <div className="display" style={{ marginBottom: 10 }}>Fit evaluations — markets you're considering</div>
+      <div className="display" style={{ marginBottom: 10 }}>Fit evaluations &mdash; markets you&apos;re considering</div>
       {candidates.length === 0 ? (
-        <Empty title="No candidate markets">Add a market as "considering" on the Markets page. The AI will weigh in here.</Empty>
+        <Empty title="No candidate markets">Add a market as &ldquo;considering&rdquo; on the Markets page. The AI will weigh in here.</Empty>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
           {candidates.map(m => {
