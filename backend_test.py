@@ -8,7 +8,7 @@ import json
 from datetime import datetime, date, timedelta
 
 class MarketOpsAPITester:
-    def __init__(self, base_url="https://musing-lederberg-6.preview.emergentagent.com"):
+    def __init__(self, base_url="https://marketops-preview.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.vendor_id = None

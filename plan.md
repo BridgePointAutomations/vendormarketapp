@@ -1,164 +1,128 @@
-# plan.md — MarketOps (React + FastAPI + MongoDB)
+# Plan — Refined Onboarding (Signup + Required Wizard + Dashboard Tour/Checklist)
 
 ## 1) Objectives
-- Validate the **core differentiator**: Claude-powered AI outputs **valid, parseable JSON** for:
-  - Restock suggestions
-  - Market fit evaluation
-  - Revenue projection (dense + sparse history)
-- Deliver an MVP web app that covers required user stories:
-  - Multi-market inventory allocation
-  - Compliance tracking w/ expiring/expired statuses
-  - In-app reminder logging (30/14/7 day intervals)
-  - Paid-tier gating for AI tools (dev tier toggle)
-- Implement the **design outline verbatim**:
-  - **Light-only** UI
-  - Specific palette
-  - Fonts: **Oswald** (display), **Karla** (body), **Caveat** (**AI copy only** via `.ai-note`)
-  - **Stamp badge constraints**: rotated stamp badges on Dashboard summaries only; plain pills for list density
-- Ship a stable v1 with end-to-end validation and demo seeding.
-
-**Current status:** MVP shipped.
-- Phase 1 POC complete (all tests pass).
-- Phase 2 full app build complete (backend + frontend).
-- E2E testing complete (testing_agent_v3 overall 98.5% pass; no critical bugs).
-- Demo credentials documented at `/app/memory/test_credentials.md`.
+- Collect richer vendor profile data via a lower-friction 2-step signup.
+- Enforce a required first-time setup wizard that guides vendors to a usable “first market day” state.
+- Keep post-onboarding momentum via a persistent Dashboard checklist and a one-time 4-stop guided tour.
+- Preserve backward compatibility: existing vendors should not be blocked by new onboarding gates.
+- Maintain MarketOps stamp/paper aesthetic and avoid new UI libraries.
 
 ---
 
 ## 2) Implementation Steps
 
-### Phase 1 — Core AI POC (Isolation; do not proceed until green)
+### Phase 1 — Core Flow POC (Onboarding Gate + Flags + Minimal UI)
 **User stories**
-1. As a developer, I can call Claude using `EMERGENT_LLM_KEY` and get deterministic **JSON-only** responses.
-2. As a vendor, I can receive restock suggestions per product for a market day.
-3. As a vendor, I can get a fit evaluation for a “considering” market.
-4. As a vendor, I can get a projected revenue number with rationale and confidence.
-5. As a vendor with sparse history, I see “not enough history” handled safely (no fake precision).
+1. As a new vendor, I must complete onboarding before I can use the app.
+2. As a returning vendor, I should not be forced back through onboarding after completing it.
+3. As an existing vendor (pre-change), I should land normally without onboarding blockers.
+4. As a new vendor, I want to land on the Dashboard and immediately see what to do next.
+5. As a new vendor, I want my onboarding progress to persist across refreshes.
 
-**Steps (completed)**
-- Implemented `/app/backend/test_core.py` with:
-  - `emergentintegrations` and Anthropic model (`claude-sonnet-4-6` in implementation).
-  - Strict JSON extraction + `json.loads` parsing.
-  - Minimal schema checks for:
-    - Restock: `[{product_id, suggested_qty, rationale, confidence}]`
-    - Market fit: `{market_id, fit_assessment, reason, confidence}`
-    - Revenue: `{market_id, market_date, projected_revenue, rationale, confidence}`
-  - Retry strategy on invalid JSON (max 2) and hard fail if still invalid.
-  - Added explicit sparse-history test ensuring `confidence='low'`.
+**Backend (POC)**
+- Extend vendor schema (non-breaking): `city`, `primary_market_type`, `expected_markets_count`, `onboarding_completed`, `tour_completed`.
+- Defaults / migration behavior:
+  - When reading vendors missing flags: treat `onboarding_completed=true` and `tour_completed=true` (or set at login/me) to avoid blocking existing accounts.
+  - For new signup: `onboarding_completed=false`, `tour_completed=false`.
+- Update `SignupRequest`, `VendorPublic`, `VendorUpdate` models accordingly.
+- Add endpoint: `PATCH /auth/me/onboarding` to update `{ onboarding_completed?, tour_completed? }`.
 
-**Gate (met)**: Phase 1 passed locally end-to-end (all 4 tests PASS).
+**Frontend (POC)**
+- Add route guard (in app router or auth provider): if logged-in and `onboarding_completed=false`, redirect to `/?onboarding=1` or `/onboarding` (keep it simple) and block navigation elsewhere.
+- Create barebones `OnboardingWizard` page with steps and “Continue” actions; for POC, stub create actions with existing Markets/Products/Compliance forms or minimal inline forms.
+- Dashboard: add a simple checklist card (“Set up your stall”) driven by computed completion states (markets/products/compliance existence).
+
+**POC test pass**
+- New signup → forced wizard → finish → dashboard accessible.
+- Refresh mid-wizard retains required gating.
+- Existing vendor account not blocked.
 
 ---
 
-### Phase 2 — V1 App Development (MVP build around proven core)
+### Phase 2 — V1 App Development (Full Signup + Wizard + Tour + Checklist)
 **User stories**
-1. As a vendor, I can sign up/login and see only my data.
-2. As a vendor, I can manage products and immediately see low-stock signals.
-3. As a vendor, I can add markets + set enrollment status (considering/applied/approved/active).
-4. As a vendor, I can allocate inventory to a market date and update remaining during the day.
-5. As a vendor, I can track compliance items (vendor-wide or per-market) and see expiring/expired states + in-app reminders.
-6. As a free user, AI is locked; as a paid user (dev toggle), I can generate AI insights.
+1. As a new vendor, I can complete signup in 2 steps so it feels fast.
+2. As a new vendor, I can add my first market and first product during onboarding.
+3. As a new vendor, I can optionally add a compliance item without being blocked.
+4. As a vendor, I see a persistent checklist on the Dashboard that auto-updates as I complete tasks.
+5. As a first-time user, I get a one-time guided tour of key Dashboard actions.
 
-**Backend (FastAPI + Motor) — completed**
-- Implemented backend structure:
-  - `server.py` (FastAPI + CORS + startup index creation)
-  - `auth.py` (bcrypt + JWT; paid-tier guard)
-  - `models.py` (Pydantic request/response models)
-  - `db.py` (Motor client + indexes)
-  - `ai_client.py` (Claude wrapper with JSON-only enforcement)
-- Implemented routes:
-  - `routes/auth_routes.py`: signup/login/me + tier upgrade/downgrade
-  - `routes/products_routes.py`: CRUD
-  - `routes/markets_routes.py`: CRUD + candidate filtering
-  - `routes/allocations_routes.py`: allocate per market/date + updates
-  - `routes/compliance_routes.py`: CRUD + computed status + sweep
-  - `routes/ai_routes.py`: restock, market-fit, revenue, revenue rollups (**paid-tier gated**)
-  - `routes/dashboard_routes.py`: aggregated stats + market cards + action-needed + reminders
-  - `routes/seed_routes.py`: idempotent demo seed
-- Mongo collections (vendor-scoped):
-  - `vendors, products, markets, allocations, compliance_items, reminders_log, revenue_projections`
-- Key business logic shipped:
-  - Compliance status: `expired` if past; `expiring` if within 30 days; else `active`.
-  - Reminder sweep: creates `reminders_log` entries at 30/14/7 days, deduped.
-  - Market-ready flag: based on vendor-wide + linked compliance items.
-  - Low-stock warning: allocation below product threshold.
-  - AI caching: revenue projections stored per (vendor, market, date); rollups are aggregation of cached values.
+**Signup improvements**
+- Convert Signup to 2-step UI:
+  - Step 1: email, password.
+  - Step 2: business_name, city, primary_market_type, expected_markets_count, owner_name, phone, category.
+- Backend: accept the new fields in `/auth/signup`; store them on vendor.
+- Validation: ensure expected_markets_count is numeric and sane (min 0).
 
-**Frontend (React) — completed**
-- Implemented design system (from outline) in `src/index.css`:
-  - Light-only enforced via `color-scheme: light only`.
-  - Palette tokens: page/canvas/charcoal/stamp-red/crate-green/mustard/line.
-  - Fonts loaded: Oswald/Karla/Caveat; `.ai-note` used for AI-generated copy only.
-  - UI primitives: crate cards, produce tags, stamp badges, status pills, stat blocks, AI note block.
-- Implemented auth + API client:
-  - JWT stored in `localStorage`.
-  - Axios interceptor applies token, redirects to `/login` on 401.
-- Implemented routes/screens (8):
-  - `/login` (includes **Try demo account** button → seeds + logs in)
-  - `/signup`
-  - `/` Dashboard: stat row, crate cards, stamp badges, compliance banner, one AI note slot (paid)
-  - `/markets` My Markets: enrolled + candidate lists, CRUD modals, AI fit button (paid)
-  - `/products`: CRUD modals; low-stock styling via produce tags
-  - `/allocate`: market/date selector, bring/remaining edits, AI restock + apply-all, revenue projection callout (paid)
-  - `/compliance`: grouped vendor-wide vs per-market; plain status pills; doc upload; reminders list
-  - `/ai-insights`: paywall for free; paid view includes rollups + restock helper + candidate fit
-  - `/settings`: profile editing + tier toggle (dev upgrade/downgrade)
+**Required setup wizard (non-skippable)**
+- Steps (linear, required except compliance):
+  1. Welcome (sets context, shows progress)
+  2. Add first market (create via existing `/markets` POST)
+  3. Add first product (create via existing `/products` POST)
+  4. Add first compliance item (optional step: “Add now” or “Not now”)
+  5. Done (calls `PATCH /auth/me/onboarding` → `onboarding_completed=true`; navigates to Dashboard)
+- Persist progress:
+  - Derive step completion from server truth (market/product exists) + local current step index.
 
-**Conclude Phase 2 (completed)**
-- Demo seed endpoint added: `POST /api/seed/demo`.
-- Test credentials documented: `/app/memory/test_credentials.md`.
-- E2E testing run via `testing_agent_v3`:
-  - **Overall:** 98.5%
-  - **Backend:** 97.8% (45/46)
-  - **Frontend:** 100% (all pages functional)
-  - No critical bugs; one low-priority note about `.test` email validation (expected behavior).
+**Dashboard checklist (persistent)**
+- New component: “Set up your stall” card.
+- Items (auto-checked):
+  - Add a market (based on `/markets` count)
+  - Add a product (based on `/products` count)
+  - Add compliance (based on `/compliance` count) (optional/soft warning)
+  - Create first allocation (based on `/allocations` for upcoming date)
+- Each item links to the relevant page/action.
+
+**Guided tour (no new libs)**
+- Vanilla React overlay + spotlight rectangle.
+- 4 stops (example targets):
+  1. Markets section / “Manage”
+  2. Products nav / add product entry point
+  3. Compliance banner/section
+  4. Allocate page entry point
+- Only triggers when `tour_completed=false` AND `onboarding_completed=true`.
+- On completion: `PATCH /auth/me/onboarding` with `tour_completed=true`.
+
+**Wrap phase with E2E testing**
+- Run existing tests + add coverage for:
+  - Signup 2-step
+  - Gate behavior
+  - Wizard completion
+  - Tour shows once
 
 ---
 
-### Phase 3 — Hardening, UX Polish, and Coverage (next-phase / optional)
+### Phase 3 — Hardening + UX Polish
 **User stories**
-1. As a vendor, I can recover from invalid inputs with clear inline errors.
-2. As a vendor, I can trust projections are cached and don’t spam AI endpoints.
-3. As a vendor, I can manage larger datasets (more products/markets) without performance issues.
-4. As a vendor, I can view/print/export compliance documents and records reliably.
-5. As an admin (future), I can support billing + email reminders with minimal refactor.
+1. As a vendor, I can’t get stuck in onboarding due to transient API failures.
+2. As a vendor, I see clear error messages and can retry a failed wizard step.
+3. As a vendor, checklist items feel consistent with the stamp/paper visual language.
+4. As a vendor, I can revisit onboarding profile fields in Settings.
+5. As a vendor, I can understand why an item is recommended (e.g., compliance is optional but important).
 
-**Steps (revised to reflect current status)**
-- Prompt hardening:
-  - Centralize/extend schema validation (optional JSON-schema level checks).
-  - Improve caching rules for AI outputs (invalidate on relevant changes).
-- Data model hardening:
-  - Add `updated_at` across collections.
-  - Add stricter ownership validations and unique constraints where appropriate (e.g., allocations per product+market+date).
-- UX polish:
-  - Inline form validation (avoid alert-based errors).
-  - Better empty states for new vendors.
-  - Add lightweight loading skeletons for AI calls.
-- Operational upgrades (feature requests / later):
-  - Real Stripe billing (replace tier toggle).
-  - Real email provider for compliance reminders (Resend) + scheduled job.
-  - File storage off Mongo (S3/Supabase Storage) if documents grow.
+- Add robust loading/error states for each wizard step action.
+- Add Settings fields for new vendor attributes (city, market type, expected markets) using `PATCH /auth/me`.
+- Tighten backward compatibility: ensure `/auth/me` always returns flags and defaults.
+- Add minimal analytics-style logging (server logs) for onboarding completion to help debug.
+- Full regression test pass.
 
 ---
 
 ## 3) Next Actions
-1. **Handoff-ready demo:** Use `/login` → **Try demo account** to explore the full app.
-2. **Confirm feature roadmap:** choose which Phase-3 items matter most (billing, real email, exports, analytics, etc.).
-3. If expanding, prioritize:
-   - Billing + paid gating (Stripe)
-   - Scheduled reminders (real email + cron)
-   - Allocation/reporting enhancements (sales capture, profitability)
+1. Implement backend model + `/auth/me/onboarding` endpoint + safe defaults for existing vendors.
+2. Add frontend onboarding gate + new `OnboardingWizard` route.
+3. Update Signup to 2-step and wire new fields end-to-end.
+4. Implement Dashboard checklist card (dynamic completion + deep links).
+5. Implement tour overlay and persistence via `tour_completed`.
+6. Run end-to-end tests; fix until stable.
 
 ---
 
 ## 4) Success Criteria
-- Phase 1: `test_core.py` passes consistently (valid JSON + sparse-history behavior).
-- Phase 2: All listed user stories work end-to-end with vendor data isolation and paid-tier AI gating.
-- Design: Light-only enforced; palette + typography rules adhered to; stamp badge only on Dashboard summaries; `.ai-note` only for AI text.
-- Testing: E2E testing shows no critical bugs; demo seeding + credentials documented.
-
-**Evidence (current build):**
-- Phase 1: PASS
-- Phase 2: COMPLETE
-- E2E: 98.5% overall; no critical issues
-- Demo creds: `/app/memory/test_credentials.md` (`demo@marketops.app` / `DemoVendor2025!`, paid tier)
+- New vendor cannot access Markets/Products/Allocate/Compliance until onboarding is completed.
+- Existing vendors are not interrupted (no forced onboarding).
+- Signup saves: business_name, city, primary_market_type, expected_markets_count (plus existing fields).
+- Wizard reliably creates first market + product; compliance step is optional but encouraged.
+- Dashboard checklist reflects real completion state and updates without manual refresh.
+- Guided tour runs once per vendor and never repeats after completion.
+- All tests pass; no regressions in auth, CRUD, or dashboard loading.
