@@ -93,36 +93,37 @@ export default function SettingsPage() {
     <div>
       <SectionHead title="Settings" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24 }}>
+      <div className="grid-2col-wide">
         <div className="canvas-surface" style={{ padding: 22 }}>
           <div className="display" style={{ marginBottom: 14 }}>Vendor profile</div>
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="field">
-              <label>Business name</label>
-              <input value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })} data-testid="settings-business" />
+              <label htmlFor="settings-business">Business name</label>
+              <input id="settings-business" value={form.business_name} onChange={e => setForm({ ...form, business_name: e.target.value })} data-testid="settings-business" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2col">
               <div className="field">
-                <label>Owner name</label>
-                <input value={form.owner_name} onChange={e => setForm({ ...form, owner_name: e.target.value })} />
+                <label htmlFor="settings-owner">Owner name</label>
+                <input id="settings-owner" value={form.owner_name} onChange={e => setForm({ ...form, owner_name: e.target.value })} />
               </div>
               <div className="field">
-                <label>Category</label>
-                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                <label htmlFor="settings-category">Category</label>
+                <select id="settings-category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                   <option value="food">Food</option>
                   <option value="craft">Craft</option>
                   <option value="mixed">Mixed</option>
                 </select>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+            <div className="grid-2col-wide">
               <div className="field">
-                <label>City</label>
-                <input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Cleveland, OH" data-testid="settings-city" />
+                <label htmlFor="settings-city">City</label>
+                <input id="settings-city" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Cleveland, OH" data-testid="settings-city" />
               </div>
               <div className="field">
-                <label>Markets you run</label>
+                <label htmlFor="settings-expected-count">Markets you run</label>
                 <input
+                  id="settings-expected-count"
                   type="number"
                   min={0}
                   max={500}
@@ -134,8 +135,9 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="field">
-              <label>Primary market type</label>
+              <label htmlFor="settings-market-type">Primary market type</label>
               <select
+                id="settings-market-type"
                 value={form.primary_market_type}
                 onChange={e => setForm({ ...form, primary_market_type: e.target.value })}
                 data-testid="settings-market-type"
@@ -144,12 +146,12 @@ export default function SettingsPage() {
               </select>
             </div>
             <div className="field">
-              <label>Phone</label>
-              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+              <label htmlFor="settings-phone">Phone</label>
+              <input id="settings-phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div className="field">
-              <label>Email</label>
-              <input value={vendor?.email || ''} disabled />
+              <label htmlFor="settings-email">Email</label>
+              <input id="settings-email" value={vendor?.email || ''} disabled />
             </div>
             {notice && <div className="banner info">{notice}</div>}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

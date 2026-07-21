@@ -92,12 +92,12 @@ export default function Signup() {
             <p style={{ color: 'var(--charcoal-soft)', marginBottom: 22, fontSize: 14 }}>Step 1 of 2 — create your account.</p>
             <form onSubmit={goStep2} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="field">
-                <label>Email</label>
-                <input type="email" required value={form.email} onChange={upd('email')} data-testid="signup-email" autoComplete="email" />
+                <label htmlFor="signup-email">Email</label>
+                <input id="signup-email" type="email" required value={form.email} onChange={upd('email')} data-testid="signup-email" autoComplete="email" />
               </div>
               <div className="field">
-                <label>Password</label>
-                <input type="password" required minLength={6} value={form.password} onChange={upd('password')} data-testid="signup-password" autoComplete="new-password" />
+                <label htmlFor="signup-password">Password</label>
+                <input id="signup-password" type="password" required minLength={6} value={form.password} onChange={upd('password')} data-testid="signup-password" autoComplete="new-password" />
                 <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: 4 }}>At least 6 characters.</div>
               </div>
               {err && <div className="banner danger" data-testid="signup-error">{err}</div>}
@@ -114,18 +114,19 @@ export default function Signup() {
             <p style={{ color: 'var(--charcoal-soft)', marginBottom: 22, fontSize: 14 }}>Step 2 of 2 — helps us tailor MarketOps to your operation.</p>
             <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="field">
-                <label>Business name</label>
-                <input required value={form.business_name} onChange={upd('business_name')} data-testid="signup-business" />
+                <label htmlFor="signup-business">Business name</label>
+                <input id="signup-business" required value={form.business_name} onChange={upd('business_name')} data-testid="signup-business" />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+              <div className="grid-2col-wide">
                 <div className="field">
-                  <label>City</label>
-                  <input value={form.city} onChange={upd('city')} placeholder="Cleveland, OH" data-testid="signup-city" />
+                  <label htmlFor="signup-city">City</label>
+                  <input id="signup-city" value={form.city} onChange={upd('city')} placeholder="Cleveland, OH" data-testid="signup-city" />
                 </div>
                 <div className="field">
-                  <label>Markets you&apos;ll run</label>
+                  <label htmlFor="signup-expected-count">Markets you&apos;ll run</label>
                   <input
+                    id="signup-expected-count"
                     type="number"
                     min={0}
                     max={500}
@@ -138,8 +139,8 @@ export default function Signup() {
               </div>
 
               <div className="field">
-                <label>Primary market type</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginTop: 4 }} data-testid="signup-market-type-grid">
+                <label id="signup-market-type-label">Primary market type</label>
+                <div role="group" aria-labelledby="signup-market-type-label" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginTop: 4 }} data-testid="signup-market-type-grid">
                   {MARKET_TYPES.map((t) => {
                     const active = form.primary_market_type === t.value;
                     const Icon = t.icon;
@@ -171,14 +172,14 @@ export default function Signup() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2col">
                 <div className="field">
-                  <label>Owner name (optional)</label>
-                  <input value={form.owner_name} onChange={upd('owner_name')} data-testid="signup-owner" />
+                  <label htmlFor="signup-owner">Owner name (optional)</label>
+                  <input id="signup-owner" value={form.owner_name} onChange={upd('owner_name')} data-testid="signup-owner" />
                 </div>
                 <div className="field">
-                  <label>Category</label>
-                  <select value={form.category} onChange={upd('category')} data-testid="signup-category">
+                  <label htmlFor="signup-category">Category</label>
+                  <select id="signup-category" value={form.category} onChange={upd('category')} data-testid="signup-category">
                     <option value="food">Food</option>
                     <option value="craft">Craft</option>
                     <option value="mixed">Mixed</option>
@@ -186,8 +187,8 @@ export default function Signup() {
                 </div>
               </div>
               <div className="field">
-                <label>Phone (optional)</label>
-                <input value={form.phone} onChange={upd('phone')} data-testid="signup-phone" />
+                <label htmlFor="signup-phone">Phone (optional)</label>
+                <input id="signup-phone" value={form.phone} onChange={upd('phone')} data-testid="signup-phone" />
               </div>
 
               {err && <div className="banner danger" data-testid="signup-error">{err}</div>}

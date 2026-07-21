@@ -84,7 +84,7 @@ export default function SeasonPnlModal({ marketId, marketName, onClose }) {
         {!loading && data && (
           <>
             {/* Totals row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
+            <div className="grid-4up" style={{ marginBottom: 18 }}>
               <TotalTile label="Days logged" value={String(data.days_logged)} hint={`${data.days_with_actuals} with actuals`} testId="season-days" />
               <TotalTile label="Revenue" value={fmtCurrency(totals.revenue)} testId="season-revenue" />
               <TotalTile label="Booth + COGS" value={fmtCurrency((totals.booth_fee || 0) + (totals.cogs || 0))} hint={`fees ${fmtCurrency(totals.booth_fee)} · COGS ${fmtCurrency(totals.cogs)}`} testId="season-costs" />

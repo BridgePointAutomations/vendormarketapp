@@ -260,16 +260,16 @@ function PackingPanel({ markets, selectedMarketId, onSelectMarket }) {
   return (
     <div>
       <div className="canvas-surface" style={{ padding: 18, marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'end' }}>
+        <div className="grid-2fr-1fr" style={{ alignItems: 'end' }}>
           <div className="field">
-            <label>Market</label>
-            <select value={selectedMarketId} onChange={(e) => onSelectMarket(e.target.value)} data-testid="packing-market-select">
+            <label htmlFor="packing-market-select">Market</label>
+            <select id="packing-market-select" value={selectedMarketId} onChange={(e) => onSelectMarket(e.target.value)} data-testid="packing-market-select">
               {markets.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.day_of_week || 'day tbd'})</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Market date</label>
-            <input type="date" value={marketDate} onChange={(e) => setMarketDate(e.target.value)} data-testid="packing-date-input" />
+            <label htmlFor="packing-date-input">Market date</label>
+            <input id="packing-date-input" type="date" value={marketDate} onChange={(e) => setMarketDate(e.target.value)} data-testid="packing-date-input" />
           </div>
         </div>
       </div>

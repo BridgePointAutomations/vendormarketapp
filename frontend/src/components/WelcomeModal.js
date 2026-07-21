@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, PlayCircle, Store, Sparkles } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { useDialogA11y } from '@/hooks/use-dialog-a11y';
 
 const SESSION_KEY = 'mo_welcome_seen_session';
 
@@ -58,6 +59,8 @@ export default function WelcomeModal() {
     setOpen(false);
   };
 
+  useDialogA11y(open, handleMaybeLater);
+
   if (!open || !vendor) return null;
 
   return (
@@ -67,6 +70,7 @@ export default function WelcomeModal() {
         style={{ maxWidth: 520 }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-modal="true"
         aria-labelledby="welcome-modal-title"
         data-testid="welcome-modal"
       >

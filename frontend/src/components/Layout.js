@@ -34,7 +34,7 @@ export default function Layout({ children }) {
           <div className="brand-sub">stall to spreadsheet</div>
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav className="sidebar-nav">
           {NAV.map((n) => (
             <NavLink
               key={n.to}

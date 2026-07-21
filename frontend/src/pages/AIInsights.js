@@ -93,7 +93,7 @@ export default function AIInsights() {
       </p>
 
       {/* Season stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 26 }}>
+      <div className="grid-4up" style={{ marginBottom: 26 }}>
         <StatBlock label="Average per visit" value={fmtCurrency(totalAvg)} hint="Sum of per-market avg" testId="stat-avg" />
         <StatBlock label="Total visits projected" value={totalVisits} hint="Across the season so far" testId="stat-visits" />
         <StatBlock label="Season projected revenue" value={fmtCurrency(grandTotal)} hint="All cached projections" testId="stat-grand" />
@@ -144,16 +144,16 @@ export default function AIInsights() {
       {/* Restock generator */}
       <div className="display" style={{ marginBottom: 10 }}>Restock helper</div>
       <div className="canvas-surface" style={{ padding: 18, marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 14, alignItems: 'end' }}>
+        <div className="grid-3col-auto" style={{ alignItems: 'end' }}>
           <div className="field">
-            <label>Market</label>
-            <select value={selectedMarket} onChange={e => setSelectedMarket(e.target.value)} data-testid="insights-market-select">
+            <label htmlFor="insights-market-select">Market</label>
+            <select id="insights-market-select" value={selectedMarket} onChange={e => setSelectedMarket(e.target.value)} data-testid="insights-market-select">
               {enrolled.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>Date</label>
-            <input type="date" value={restockDate} onChange={e => setRestockDate(e.target.value)} data-testid="insights-restock-date" />
+            <label htmlFor="insights-restock-date">Date</label>
+            <input id="insights-restock-date" type="date" value={restockDate} onChange={e => setRestockDate(e.target.value)} data-testid="insights-restock-date" />
           </div>
           <button className="btn primary" onClick={runRestock} disabled={busy === 'restock' || !selectedMarket} data-testid="insights-restock-btn">
             <Sparkles size={13} /> {busy === 'restock' ? 'Thinking…' : 'Generate'}

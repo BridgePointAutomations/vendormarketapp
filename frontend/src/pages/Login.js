@@ -44,12 +44,12 @@ export default function Login() {
         <p style={{ color: 'var(--charcoal-soft)', marginBottom: 22, fontSize: 14 }}>Welcome back, vendor.</p>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="field">
-            <label>Email</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="login-email" autoComplete="email" />
+            <label htmlFor="login-email">Email</label>
+            <input id="login-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} data-testid="login-email" autoComplete="email" />
           </div>
           <div className="field">
-            <label>Password</label>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} data-testid="login-password" autoComplete="current-password" />
+            <label htmlFor="login-password">Password</label>
+            <input id="login-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} data-testid="login-password" autoComplete="current-password" />
           </div>
           {err && <div className="banner danger" data-testid="login-error">{err}</div>}
           <button className="btn primary" type="submit" disabled={busy} data-testid="login-submit">{busy ? '…' : 'Log in'}</button>

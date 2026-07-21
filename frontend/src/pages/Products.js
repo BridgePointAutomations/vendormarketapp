@@ -92,19 +92,19 @@ export default function Products() {
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit product' : 'Add product'} testId="product-modal">
         {modal && (
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="field"><label>Name</label><input required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="product-name-input" /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="field"><label>SKU</label><input value={modal.form.sku || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, sku: e.target.value } })} /></div>
-              <div className="field"><label>Unit</label><input value={modal.form.unit || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit: e.target.value } })} placeholder="loaf, jar, piece…" /></div>
+            <div className="field"><label htmlFor="product-name-input">Name</label><input id="product-name-input" required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="product-name-input" /></div>
+            <div className="grid-2col">
+              <div className="field"><label htmlFor="product-sku-input">SKU</label><input id="product-sku-input" value={modal.form.sku || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, sku: e.target.value } })} /></div>
+              <div className="field"><label htmlFor="product-unit-input">Unit</label><input id="product-unit-input" value={modal.form.unit || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit: e.target.value } })} placeholder="loaf, jar, piece…" /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-              <div className="field"><label>Unit price ($)</label><input type="number" min="0" step="0.01" value={modal.form.unit_price} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_price: e.target.value } })} data-testid="product-price-input" /></div>
+            <div className="grid-4up">
+              <div className="field"><label htmlFor="product-price-input">Unit price ($)</label><input id="product-price-input" type="number" min="0" step="0.01" value={modal.form.unit_price} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_price: e.target.value } })} data-testid="product-price-input" /></div>
               <div className="field">
-                <label>Unit cost ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
-                <input type="number" min="0" step="0.01" value={modal.form.unit_cost ?? ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_cost: e.target.value } })} placeholder="COGS per unit" data-testid="product-cost-input" />
+                <label htmlFor="product-cost-input">Unit cost ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
+                <input id="product-cost-input" type="number" min="0" step="0.01" value={modal.form.unit_cost ?? ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_cost: e.target.value } })} placeholder="COGS per unit" data-testid="product-cost-input" />
               </div>
-              <div className="field"><label>Current stock</label><input type="number" min="0" value={modal.form.current_stock} onChange={e => setModal({ ...modal, form: { ...modal.form, current_stock: e.target.value } })} data-testid="product-stock-input" /></div>
-              <div className="field"><label>Low threshold</label><input type="number" min="0" value={modal.form.low_stock_threshold} onChange={e => setModal({ ...modal, form: { ...modal.form, low_stock_threshold: e.target.value } })} /></div>
+              <div className="field"><label htmlFor="product-stock-input">Current stock</label><input id="product-stock-input" type="number" min="0" value={modal.form.current_stock} onChange={e => setModal({ ...modal, form: { ...modal.form, current_stock: e.target.value } })} data-testid="product-stock-input" /></div>
+              <div className="field"><label htmlFor="product-low-threshold-input">Low threshold</label><input id="product-low-threshold-input" type="number" min="0" value={modal.form.low_stock_threshold} onChange={e => setModal({ ...modal, form: { ...modal.form, low_stock_threshold: e.target.value } })} /></div>
             </div>
             <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: -4 }}>
               Unit cost is used to estimate profit on the Allocate page. All figures are your own estimates — not accounting or tax advice.

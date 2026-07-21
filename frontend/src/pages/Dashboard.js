@@ -75,7 +75,7 @@ export default function Dashboard() {
       )}
 
       {/* Stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 26 }}>
+      <div className="grid-4up" style={{ marginBottom: 26 }}>
         <StatBlock label="Markets this week" value={s.markets_this_week} hint={`${s.total_markets} enrolled overall`} testId="stat-markets" />
         <StatBlock label="Action needed" value={s.action_needed_count} hint="Expiring or expired" testId="stat-action" />
         <StatBlock label="Projected week revenue" value={fmtCurrency(s.projected_week_revenue)} hint={vendor?.tier === 'paid' ? 'From AI projections' : 'Upgrade for AI'} testId="stat-revenue" />

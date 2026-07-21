@@ -167,20 +167,20 @@ export default function OnboardingWizard() {
             <SectionHeader title="Add your first market" hint="All fields required." />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="field">
-                <label>Market name</label>
-                <input value={market.name} onChange={(e) => setMarket({ ...market, name: e.target.value })} placeholder="Shaker Square Farmers Market" data-testid="wizard-market-name" />
+                <label htmlFor="wizard-market-name">Market name</label>
+                <input id="wizard-market-name" value={market.name} onChange={(e) => setMarket({ ...market, name: e.target.value })} placeholder="Shaker Square Farmers Market" data-testid="wizard-market-name" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2col">
                 <div className="field">
-                  <label>Day of week</label>
-                  <select value={market.day_of_week} onChange={(e) => setMarket({ ...market, day_of_week: e.target.value })} data-testid="wizard-market-day">
+                  <label htmlFor="wizard-market-day">Day of week</label>
+                  <select id="wizard-market-day" value={market.day_of_week} onChange={(e) => setMarket({ ...market, day_of_week: e.target.value })} data-testid="wizard-market-day">
                     <option value="">Pick a day…</option>
                     {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="field">
-                  <label>Status</label>
-                  <select value={market.status} onChange={(e) => setMarket({ ...market, status: e.target.value })} data-testid="wizard-market-status">
+                  <label htmlFor="wizard-market-status">Status</label>
+                  <select id="wizard-market-status" value={market.status} onChange={(e) => setMarket({ ...market, status: e.target.value })} data-testid="wizard-market-status">
                     <option value="considering">Considering</option>
                     <option value="applied">Applied</option>
                     <option value="approved">Approved</option>
@@ -189,8 +189,8 @@ export default function OnboardingWizard() {
                 </div>
               </div>
               <div className="field">
-                <label>Address</label>
-                <input value={market.address} onChange={(e) => setMarket({ ...market, address: e.target.value })} placeholder="13000 Shaker Sq, Cleveland OH" data-testid="wizard-market-address" />
+                <label htmlFor="wizard-market-address">Address</label>
+                <input id="wizard-market-address" value={market.address} onChange={(e) => setMarket({ ...market, address: e.target.value })} placeholder="13000 Shaker Sq, Cleveland OH" data-testid="wizard-market-address" />
               </div>
             </div>
             <WizardFooter
@@ -207,21 +207,21 @@ export default function OnboardingWizard() {
             <SectionHeader title="Add your first product" hint="All fields required." />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="field">
-                <label>Product name</label>
-                <input value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} placeholder="Sourdough Loaf" data-testid="wizard-product-name" />
+                <label htmlFor="wizard-product-name">Product name</label>
+                <input id="wizard-product-name" value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} placeholder="Sourdough Loaf" data-testid="wizard-product-name" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div className="grid-3col">
                 <div className="field">
-                  <label>Unit</label>
-                  <input value={product.unit} onChange={(e) => setProduct({ ...product, unit: e.target.value })} placeholder="loaf, jar, piece" data-testid="wizard-product-unit" />
+                  <label htmlFor="wizard-product-unit">Unit</label>
+                  <input id="wizard-product-unit" value={product.unit} onChange={(e) => setProduct({ ...product, unit: e.target.value })} placeholder="loaf, jar, piece" data-testid="wizard-product-unit" />
                 </div>
                 <div className="field">
-                  <label>Unit price ($)</label>
-                  <input type="number" min={0} step="0.01" value={product.unit_price} onChange={(e) => setProduct({ ...product, unit_price: e.target.value })} placeholder="9.00" data-testid="wizard-product-price" />
+                  <label htmlFor="wizard-product-price">Unit price ($)</label>
+                  <input id="wizard-product-price" type="number" min={0} step="0.01" value={product.unit_price} onChange={(e) => setProduct({ ...product, unit_price: e.target.value })} placeholder="9.00" data-testid="wizard-product-price" />
                 </div>
                 <div className="field">
-                  <label>Current stock</label>
-                  <input type="number" min={0} step="1" value={product.current_stock} onChange={(e) => setProduct({ ...product, current_stock: e.target.value })} placeholder="40" data-testid="wizard-product-stock" />
+                  <label htmlFor="wizard-product-stock">Current stock</label>
+                  <input id="wizard-product-stock" type="number" min={0} step="1" value={product.current_stock} onChange={(e) => setProduct({ ...product, current_stock: e.target.value })} placeholder="40" data-testid="wizard-product-stock" />
                 </div>
               </div>
             </div>
@@ -249,10 +249,10 @@ export default function OnboardingWizard() {
             </label>
             {!skipCompliance && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2col">
                   <div className="field">
-                    <label>Type</label>
-                    <select value={compliance.type} onChange={(e) => setCompliance({ ...compliance, type: e.target.value })} data-testid="wizard-compliance-type">
+                    <label htmlFor="wizard-compliance-type">Type</label>
+                    <select id="wizard-compliance-type" value={compliance.type} onChange={(e) => setCompliance({ ...compliance, type: e.target.value })} data-testid="wizard-compliance-type">
                       <option value="permit">Permit</option>
                       <option value="license">License</option>
                       <option value="insurance">Insurance</option>
@@ -260,13 +260,13 @@ export default function OnboardingWizard() {
                     </select>
                   </div>
                   <div className="field">
-                    <label>Expiration date</label>
-                    <input type="date" value={compliance.expiration_date} onChange={(e) => setCompliance({ ...compliance, expiration_date: e.target.value })} data-testid="wizard-compliance-expiry" />
+                    <label htmlFor="wizard-compliance-expiry">Expiration date</label>
+                    <input id="wizard-compliance-expiry" type="date" value={compliance.expiration_date} onChange={(e) => setCompliance({ ...compliance, expiration_date: e.target.value })} data-testid="wizard-compliance-expiry" />
                   </div>
                 </div>
                 <div className="field">
-                  <label>Name</label>
-                  <input value={compliance.name} onChange={(e) => setCompliance({ ...compliance, name: e.target.value })} placeholder="Cuyahoga County Vendor Permit" data-testid="wizard-compliance-name" />
+                  <label htmlFor="wizard-compliance-name">Name</label>
+                  <input id="wizard-compliance-name" value={compliance.name} onChange={(e) => setCompliance({ ...compliance, name: e.target.value })} placeholder="Cuyahoga County Vendor Permit" data-testid="wizard-compliance-name" />
                 </div>
               </div>
             )}

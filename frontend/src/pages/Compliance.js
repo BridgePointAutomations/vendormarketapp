@@ -146,28 +146,28 @@ export default function Compliance() {
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit item' : 'Add compliance item'} testId="compliance-modal">
         {modal && (
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2col">
               <div className="field">
-                <label>Type</label>
-                <select value={modal.form.type} onChange={e => setModal({ ...modal, form: { ...modal.form, type: e.target.value } })} data-testid="comp-type">
+                <label htmlFor="comp-type">Type</label>
+                <select id="comp-type" value={modal.form.type} onChange={e => setModal({ ...modal, form: { ...modal.form, type: e.target.value } })} data-testid="comp-type">
                   {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Scope</label>
-                <select value={modal.form.market_id || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, market_id: e.target.value } })}>
+                <label htmlFor="comp-scope">Scope</label>
+                <select id="comp-scope" value={modal.form.market_id || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, market_id: e.target.value } })}>
                   <option value="">Vendor-wide</option>
                   {markets.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
               </div>
             </div>
-            <div className="field"><label>Name</label><input required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="comp-name-input" /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="field"><label>Issue date</label><input type="date" value={modal.form.issue_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, issue_date: e.target.value } })} /></div>
-              <div className="field"><label>Expiration date</label><input type="date" required value={modal.form.expiration_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, expiration_date: e.target.value } })} data-testid="comp-exp-input" /></div>
+            <div className="field"><label htmlFor="comp-name-input">Name</label><input id="comp-name-input" required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="comp-name-input" /></div>
+            <div className="grid-2col">
+              <div className="field"><label htmlFor="comp-issue-input">Issue date</label><input id="comp-issue-input" type="date" value={modal.form.issue_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, issue_date: e.target.value } })} /></div>
+              <div className="field"><label htmlFor="comp-exp-input">Expiration date</label><input id="comp-exp-input" type="date" required value={modal.form.expiration_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, expiration_date: e.target.value } })} data-testid="comp-exp-input" /></div>
             </div>
-            <div className="field"><label>Notes</label><textarea rows={2} value={modal.form.notes || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, notes: e.target.value } })} /></div>
-            <div className="field"><label>Document (PDF or image)</label><input type="file" accept="application/pdf,image/*" onChange={e => setModal({ ...modal, file: e.target.files?.[0] })} /></div>
+            <div className="field"><label htmlFor="comp-notes">Notes</label><textarea id="comp-notes" rows={2} value={modal.form.notes || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, notes: e.target.value } })} /></div>
+            <div className="field"><label htmlFor="comp-file">Document (PDF or image)</label><input id="comp-file" type="file" accept="application/pdf,image/*" onChange={e => setModal({ ...modal, file: e.target.files?.[0] })} /></div>
             {modal.form.document_filename && !modal.file && (
               <div style={{ fontSize: 12, color: 'var(--charcoal-soft)' }}><FileText size={12} style={{ display: 'inline', marginRight: 4 }} /> Current: {modal.form.document_filename}</div>
             )}

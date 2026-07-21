@@ -197,11 +197,11 @@ export default function Markets() {
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit market' : 'Add market'} testId="market-modal">
         {modal && (
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="field"><label>Market name</label><input required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="market-name-input" /></div>
-            <div className="field"><label>Address</label><input value={modal.form.address || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, address: e.target.value } })} /></div>
+            <div className="field"><label htmlFor="market-name-input">Market name</label><input id="market-name-input" required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="market-name-input" /></div>
+            <div className="field"><label htmlFor="market-address-input">Address</label><input id="market-address-input" value={modal.form.address || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, address: e.target.value } })} /></div>
             <div className="field">
-              <label>Schedule</label>
-              <div style={{ display: 'flex', gap: 8 }} data-testid="recurrence-toggle">
+              <label id="market-schedule-label">Schedule</label>
+              <div role="group" aria-labelledby="market-schedule-label" style={{ display: 'flex', gap: 8 }} data-testid="recurrence-toggle">
                 <button
                   type="button"
                   className={`btn tiny ${modal.form.recurrence_pattern === 'weekly' ? 'primary' : 'outline'}`}
@@ -217,24 +217,24 @@ export default function Markets() {
               </div>
             </div>
             {modal.form.recurrence_pattern === 'weekly' ? (
-              <div className="field"><label>Day of week</label>
-                <select value={modal.form.day_of_week || 'Saturday'} onChange={e => setModal({ ...modal, form: { ...modal.form, day_of_week: e.target.value } })}>
+              <div className="field"><label htmlFor="market-day-of-week">Day of week</label>
+                <select id="market-day-of-week" value={modal.form.day_of_week || 'Saturday'} onChange={e => setModal({ ...modal, form: { ...modal.form, day_of_week: e.target.value } })}>
                   {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
             ) : (
-              <div className="field"><label>Market date</label><input type="date" value={modal.form._one_off_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, _one_off_date: e.target.value } })} data-testid="one-off-date-input" /></div>
+              <div className="field"><label htmlFor="one-off-date-input">Market date</label><input id="one-off-date-input" type="date" value={modal.form._one_off_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, _one_off_date: e.target.value } })} data-testid="one-off-date-input" /></div>
             )}
-            <div className="field"><label>Category</label>
-              <select value={modal.form.category_focus || 'food'} onChange={e => setModal({ ...modal, form: { ...modal.form, category_focus: e.target.value } })}>
+            <div className="field"><label htmlFor="market-category-focus">Category</label>
+              <select id="market-category-focus" value={modal.form.category_focus || 'food'} onChange={e => setModal({ ...modal, form: { ...modal.form, category_focus: e.target.value } })}>
                 <option value="food">Food</option><option value="craft">Craft</option><option value="mixed">Mixed</option>
               </select>
             </div>
             {modal.form.recurrence_pattern === 'weekly' && (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="field"><label>Season start</label><input type="date" value={modal.form.season_start || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_start: e.target.value } })} /></div>
-                  <div className="field"><label>Season end</label><input type="date" value={modal.form.season_end || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_end: e.target.value } })} /></div>
+                <div className="grid-2col">
+                  <div className="field"><label htmlFor="market-season-start">Season start</label><input id="market-season-start" type="date" value={modal.form.season_start || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_start: e.target.value } })} /></div>
+                  <div className="field"><label htmlFor="market-season-end">Season end</label><input id="market-season-end" type="date" value={modal.form.season_end || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_end: e.target.value } })} /></div>
                 </div>
                 {modal.id && (
                   <div className="field">
@@ -253,8 +253,9 @@ export default function Markets() {
               </>
             )}
             <div className="field">
-              <label>Default booth fee ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
+              <label htmlFor="market-booth-fee-input">Default booth fee ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
               <input
+                id="market-booth-fee-input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -267,8 +268,8 @@ export default function Markets() {
                 Applied to each market day for this market. You can override per date on the Allocate page.
               </div>
             </div>
-            <div className="field"><label>Enrollment status</label>
-              <select value={modal.form.status} onChange={e => setModal({ ...modal, form: { ...modal.form, status: e.target.value, is_candidate: e.target.value === 'considering' } })} data-testid="market-status">
+            <div className="field"><label htmlFor="market-status">Enrollment status</label>
+              <select id="market-status" value={modal.form.status} onChange={e => setModal({ ...modal, form: { ...modal.form, status: e.target.value, is_candidate: e.target.value === 'considering' } })} data-testid="market-status">
                 <option value="considering">Considering</option><option value="applied">Applied</option><option value="approved">Approved</option><option value="active">Active</option>
               </select>
             </div>

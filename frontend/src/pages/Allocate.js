@@ -188,16 +188,16 @@ export default function Allocate() {
       {markets.length > 0 && (
         <>
           <div className="canvas-surface" style={{ padding: 18, marginBottom: 22 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 16, alignItems: 'end' }}>
+            <div className="grid-3col-wide" style={{ alignItems: 'end' }}>
               <div className="field">
-                <label>Market</label>
-                <select value={marketId} onChange={e => setMarketId(e.target.value)} data-testid="alloc-market-select">
+                <label htmlFor="alloc-market-select">Market</label>
+                <select id="alloc-market-select" value={marketId} onChange={e => setMarketId(e.target.value)} data-testid="alloc-market-select">
                   {markets.map(m => <option key={m.id} value={m.id}>{m.name} ({m.day_of_week || 'day tbd'})</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Market date</label>
-                <input type="date" value={marketDate} onChange={e => setMarketDate(e.target.value)} data-testid="alloc-date-input" />
+                <label htmlFor="alloc-date-input">Market date</label>
+                <input id="alloc-date-input" type="date" value={marketDate} onChange={e => setMarketDate(e.target.value)} data-testid="alloc-date-input" />
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div className="display-xs text-muted">Allocated value</div>
@@ -220,10 +220,11 @@ export default function Allocate() {
                   </div>
                 </div>
                 <div className="field" style={{ minWidth: 200 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <label htmlFor="pnl-booth-fee-input" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <DollarSign size={11} /> Booth fee (this date)
                   </label>
                   <input
+                    id="pnl-booth-fee-input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -237,7 +238,7 @@ export default function Allocate() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 14 }}>
+              <div className="grid-4up" style={{ marginTop: 14 }}>
                 <PnlTile label="Revenue" value={fmtCurrency(pnl.revenue)} hint={`${pnl.units_sold} units sold`} testId="pnl-revenue" />
                 <PnlTile label="Booth fee" value={fmtCurrency(pnl.booth_fee)} testId="pnl-booth" />
                 <PnlTile label="Est. COGS" value={fmtCurrency(pnl.cogs)} hint="From unit costs" testId="pnl-cogs" />
@@ -340,10 +341,10 @@ export default function Allocate() {
                       )}
                     </div>
                     <hr className="dashed-hr" />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div className="grid-3col" style={{ gap: 10 }}>
                       <div className="field">
-                        <label>Bring</label>
-                        <input type="number" min="0" defaultValue={allocated}
+                        <label htmlFor={`alloc-bring-${p.id}`}>Bring</label>
+                        <input id={`alloc-bring-${p.id}`} type="number" min="0" defaultValue={allocated}
                           onBlur={(e) => {
                             const v = Number(e.target.value) || 0;
                             if (v === allocated) return;
@@ -353,8 +354,8 @@ export default function Allocate() {
                         />
                       </div>
                       <div className="field">
-                        <label>Remaining</label>
-                        <input type="number" min="0" defaultValue={remaining}
+                        <label htmlFor={`alloc-remaining-${p.id}`}>Remaining</label>
+                        <input id={`alloc-remaining-${p.id}`} type="number" min="0" defaultValue={remaining}
                           disabled={!a}
                           onBlur={(e) => {
                             const v = Number(e.target.value) || 0;
@@ -365,8 +366,8 @@ export default function Allocate() {
                         />
                       </div>
                       <div className="field">
-                        <label>Sold</label>
-                        <input type="number" min="0" defaultValue={a?.actual_units_sold ?? ''}
+                        <label htmlFor={`alloc-sold-${p.id}`}>Sold</label>
+                        <input id={`alloc-sold-${p.id}`} type="number" min="0" defaultValue={a?.actual_units_sold ?? ''}
                           disabled={!a}
                           placeholder={a ? String(Math.max(0, allocated - remaining)) : ''}
                           onBlur={(e) => {
