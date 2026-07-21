@@ -1,10 +1,45 @@
 """Shared helpers used across routes."""
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, Dict, Any
 import uuid
 
 EXPIRING_WINDOW_DAYS = 30
 REMINDER_INTERVALS = [30, 14, 7]
+MAX_GENERATED_DATES = 104  # ~2 years of weekly dates
+
+WEEKDAY_INDEX = {
+    'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+    'Friday': 4, 'Saturday': 5, 'Sunday': 6,
+}
+
+
+def generate_weekly_dates(day_of_week: str, season_start: str, season_end: str) -> list:
+    """Return every ISO date matching `day_of_week` in [season_start, season_end], inclusive.
+
+    Raises ValueError if inputs are missing/unparseable or the range would
+    produce more than MAX_GENERATED_DATES dates.
+    """
+    if not day_of_week or day_of_week not in WEEKDAY_INDEX:
+        raise ValueError('day_of_week must be a valid weekday name')
+    try:
+        start = date.fromisoformat((season_start or '')[:10])
+        end = date.fromisoformat((season_end or '')[:10])
+    except Exception:
+        raise ValueError('season_start and season_end must be valid ISO dates')
+    if end < start:
+        raise ValueError('season_end must be on or after season_start')
+
+    target = WEEKDAY_INDEX[day_of_week]
+    offset = (target - start.weekday()) % 7
+    current = start + timedelta(days=offset)
+
+    dates = []
+    while current <= end:
+        dates.append(current.isoformat())
+        if len(dates) > MAX_GENERATED_DATES:
+            raise ValueError(f'Range too large — exceeds {MAX_GENERATED_DATES} dates')
+        current += timedelta(days=7)
+    return dates
 
 
 def uid() -> str:

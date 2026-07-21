@@ -6,6 +6,8 @@ import uuid
 from db import db
 from models import Market, MarketCreate, MarketUpdate
 from auth import get_current_vendor
+from utils import generate_weekly_dates
+from routes.market_days_routes import upsert_market_day_for
 
 router = APIRouter(prefix='/markets', tags=['markets'])
 
@@ -87,6 +89,49 @@ async def clone_active_markets(vendor=Depends(get_current_vendor)):
         for d in new_docs:
             d.pop('_id', None)
     return new_docs
+
+
+@router.post('/{mid}/generate-season-days')
+async def generate_season_days(mid: str, vendor=Depends(get_current_vendor)):
+    """Bulk-create market_days rows for every matching weekday between
+    a weekly market's season_start and season_end.
+
+    Never deletes existing rows. Dates already covered are left untouched
+    (their booth_fee/notes are not overwritten); existing market_days rows
+    for this market that fall outside the computed range are reported back
+    so the vendor can review/remove them manually via DELETE /market-days.
+    """
+    market = await db.markets.find_one({'id': mid, 'vendor_id': vendor['id']}, {'_id': 0})
+    if not market:
+        raise HTTPException(status_code=404, detail='Market not found')
+    if market.get('recurrence_pattern') != 'weekly':
+        raise HTTPException(status_code=400, detail='Market must be recurring (weekly) to generate season dates')
+    if not market.get('day_of_week') or not market.get('season_start') or not market.get('season_end'):
+        raise HTTPException(status_code=400, detail='Market must have day_of_week, season_start, and season_end set')
+
+    try:
+        dates = generate_weekly_dates(market['day_of_week'], market['season_start'], market['season_end'])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    existing_rows = await db.market_days.find(
+        {'vendor_id': vendor['id'], 'market_id': mid}, {'_id': 0},
+    ).to_list(500)
+    existing_dates = {r['market_date'] for r in existing_rows}
+
+    created = []
+    skipped_existing = []
+    for d in dates:
+        if d in existing_dates:
+            skipped_existing.append(d)
+            continue
+        await upsert_market_day_for(vendor['id'], market, d)
+        created.append(d)
+
+    date_set = set(dates)
+    outside_range = sorted(r['market_date'] for r in existing_rows if r['market_date'] not in date_set)
+
+    return {'created': created, 'skipped_existing': skipped_existing, 'outside_range': outside_range}
 
 
 @router.patch('/{mid}', response_model=Market)

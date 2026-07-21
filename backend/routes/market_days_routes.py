@@ -24,50 +24,53 @@ async def list_market_days(
     return rows
 
 
-@router.post('', response_model=MarketDay)
-async def upsert_market_day(body: MarketDayCreate, vendor=Depends(get_current_vendor)):
+async def upsert_market_day_for(vendor_id: str, market: dict, market_date: str, booth_fee=None, notes=None) -> dict:
     """Create or update the market_day for (vendor_id, market_id, market_date).
 
     If `booth_fee` is None and no existing row exists, inherit from
     `markets.default_booth_fee`. If `booth_fee` is None and a row exists,
     keep the existing fee.
     """
-    market = await db.markets.find_one({'id': body.market_id, 'vendor_id': vendor['id']}, {'_id': 0})
-    if not market:
-        raise HTTPException(status_code=404, detail='Market not found')
-
     existing = await db.market_days.find_one({
-        'vendor_id': vendor['id'],
-        'market_id': body.market_id,
-        'market_date': body.market_date,
+        'vendor_id': vendor_id,
+        'market_id': market['id'],
+        'market_date': market_date,
     }, {'_id': 0})
 
     if existing:
         update = {}
-        if body.booth_fee is not None:
-            update['booth_fee'] = float(body.booth_fee)
-        if body.notes is not None:
-            update['notes'] = body.notes
+        if booth_fee is not None:
+            update['booth_fee'] = float(booth_fee)
+        if notes is not None:
+            update['notes'] = notes
         if update:
             await db.market_days.update_one({'id': existing['id']}, {'$set': update})
             existing.update(update)
         return existing
 
-    booth_fee = body.booth_fee
-    if booth_fee is None:
-        booth_fee = market.get('default_booth_fee')
+    fee = booth_fee
+    if fee is None:
+        fee = market.get('default_booth_fee')
     doc = {
         'id': uid(),
-        'vendor_id': vendor['id'],
-        'market_id': body.market_id,
-        'market_date': body.market_date,
-        'booth_fee': float(booth_fee) if booth_fee is not None else None,
-        'notes': body.notes,
+        'vendor_id': vendor_id,
+        'market_id': market['id'],
+        'market_date': market_date,
+        'booth_fee': float(fee) if fee is not None else None,
+        'notes': notes,
         'created_at': iso_now(),
     }
     await db.market_days.insert_one(doc)
     doc.pop('_id', None)
     return doc
+
+
+@router.post('', response_model=MarketDay)
+async def upsert_market_day(body: MarketDayCreate, vendor=Depends(get_current_vendor)):
+    market = await db.markets.find_one({'id': body.market_id, 'vendor_id': vendor['id']}, {'_id': 0})
+    if not market:
+        raise HTTPException(status_code=404, detail='Market not found')
+    return await upsert_market_day_for(vendor['id'], market, body.market_date, body.booth_fee, body.notes)
 
 
 @router.patch('/{mdid}', response_model=MarketDay)

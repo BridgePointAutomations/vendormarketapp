@@ -29,6 +29,13 @@ async def dashboard(vendor=Depends(get_current_vendor)):
         except Exception:
             continue
 
+    # market_days upcoming — preferred source for "next date" (mirrors checklists_routes.packing_next_day),
+    # since dates can be scheduled here (recurrence engine, one-off markets) before any allocation is logged
+    market_days = await db.market_days.find(
+        {'vendor_id': vid, 'market_date': {'$gte': today.isoformat(), '$lte': week_end.isoformat()}},
+        {'_id': 0},
+    ).to_list(500)
+
     # compliance
     compliance = await db.compliance_items.find({'vendor_id': vid}, {'_id': 0}).to_list(500)
     for c in compliance:
@@ -59,16 +66,19 @@ async def dashboard(vendor=Depends(get_current_vendor)):
                     'allocated_qty': a['allocated_qty'],
                     'threshold': p['low_stock_threshold'],
                 })
-        # next date for this market from allocations
+        # next date for this market — prefer scheduled market_days, fall back to allocations
+        m_days = sorted(md['market_date'] for md in market_days if md['market_id'] == m['id'])
         next_dates = sorted([a['market_date'] for a in m_allocs])
+        next_date = m_days[0] if m_days else (next_dates[0] if next_dates else None)
         market_cards.append({
             'id': m['id'],
             'name': m['name'],
             'day_of_week': m.get('day_of_week'),
+            'recurrence_pattern': m.get('recurrence_pattern'),
             'status_label': m.get('status'),
             'ready': market_ready,
             'address': m.get('address'),
-            'next_date': next_dates[0] if next_dates else None,
+            'next_date': next_date,
             'upcoming_alloc_count': len(m_allocs),
             'warnings': warnings,
             'compliance_issues': [
@@ -93,7 +103,7 @@ async def dashboard(vendor=Depends(get_current_vendor)):
 
     return {
         'stats': {
-            'markets_this_week': len({a['market_id'] for a in upcoming_allocs}),
+            'markets_this_week': len({a['market_id'] for a in upcoming_allocs} | {md['market_id'] for md in market_days}),
             'action_needed_count': len(action_needed_items),
             'projected_week_revenue': round(week_revenue, 2),
             'total_markets': len(markets),

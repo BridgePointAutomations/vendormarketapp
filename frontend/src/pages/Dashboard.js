@@ -98,7 +98,10 @@ export default function Dashboard() {
           <div key={m.id} className="crate-card" style={{ padding: '22px 20px 18px 20px' }} data-testid={`market-card-${m.id}`}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, gap: 10 }}>
               <div>
-                <div className="display-sm text-muted">{m.day_of_week || 'Schedule TBD'}</div>
+                <div className="display-sm text-muted" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{m.recurrence_pattern === 'weekly' ? 'Recurring' : 'One-time'}</span>
+                  <span>· {m.day_of_week || 'Schedule TBD'}</span>
+                </div>
                 <div className="display-md" style={{ marginTop: 2 }}>{m.name}</div>
               </div>
               <StampBadge variant={m.ready ? 'ready' : 'action'} testId={`stamp-${m.id}`}>

@@ -6,7 +6,7 @@ import { fmtDate } from '@/lib/format';
 import { Plus, Pencil, Trash2, Sparkles, MapPin, DollarSign, Copy } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
-const empty = { name: '', address: '', day_of_week: 'Saturday', season_start: '', season_end: '', category_focus: 'food', is_candidate: false, status: 'considering', default_booth_fee: '' };
+const empty = { name: '', address: '', day_of_week: 'Saturday', recurrence_pattern: 'weekly', season_start: '', season_end: '', category_focus: 'food', is_candidate: false, status: 'considering', default_booth_fee: '', _one_off_date: '' };
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function Markets() {
@@ -36,17 +36,23 @@ export default function Markets() {
     e.preventDefault();
     setSaving(true);
     try {
+      const { _one_off_date, ...rest } = modal.form;
       const payload = {
-        ...modal.form,
+        ...rest,
         default_booth_fee:
           modal.form.default_booth_fee === '' || modal.form.default_booth_fee == null
             ? null
             : Number(modal.form.default_booth_fee),
       };
+      let savedId = modal.id;
       if (modal.id) {
         await api.patch(`/markets/${modal.id}`, payload);
       } else {
-        await api.post('/markets', payload);
+        const { data } = await api.post('/markets', payload);
+        savedId = data.id;
+      }
+      if (payload.recurrence_pattern === 'one_off' && _one_off_date && savedId) {
+        await api.post('/market-days', { market_id: savedId, market_date: _one_off_date });
       }
       setModal(null);
       await load();
@@ -93,6 +99,20 @@ export default function Markets() {
     } catch (e) {
       alert(e?.response?.data?.detail || 'Copy failed');
     } finally { setCloning(false); }
+  };
+
+  const [generating, setGenerating] = useState(false);
+  const generateSeasonDays = async (marketId) => {
+    setGenerating(true);
+    try {
+      const { data } = await api.post(`/markets/${marketId}/generate-season-days`);
+      let msg = `Created ${data.created.length} market day${data.created.length !== 1 ? 's' : ''}.`;
+      if (data.skipped_existing.length) msg += ` ${data.skipped_existing.length} already existed.`;
+      if (data.outside_range.length) msg += ` ${data.outside_range.length} existing date(s) now fall outside the season — review/remove them on the Allocate page.`;
+      alert(msg);
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Failed to generate season dates');
+    } finally { setGenerating(false); }
   };
 
   const enrolled = items.filter(i => !i.is_candidate);
@@ -144,7 +164,7 @@ export default function Markets() {
                     <div>
                       <div style={{ fontWeight: 600, marginBottom: 2 }}>{m.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--charcoal-soft)' }}>
-                        {m.day_of_week || 'Day TBD'} · {m.address || 'No address'} · <StatusPill variant="considering">{m.status}</StatusPill>
+                        <StatusPill variant={m.recurrence_pattern === 'weekly' ? 'active' : 'considering'}>{m.recurrence_pattern === 'weekly' ? 'Weekly' : 'One-time'}</StatusPill> · {m.day_of_week || 'Day TBD'} · {m.address || 'No address'} · <StatusPill variant="considering">{m.status}</StatusPill>
                       </div>
                       {fitData[m.id] && !fitData[m.id].error && (
                         <div className="ai-note-block" style={{ marginTop: 10 }}>
@@ -179,22 +199,59 @@ export default function Markets() {
           <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="field"><label>Market name</label><input required value={modal.form.name} onChange={e => setModal({ ...modal, form: { ...modal.form, name: e.target.value } })} data-testid="market-name-input" /></div>
             <div className="field"><label>Address</label><input value={modal.form.address || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, address: e.target.value } })} /></div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="field">
+              <label>Schedule</label>
+              <div style={{ display: 'flex', gap: 8 }} data-testid="recurrence-toggle">
+                <button
+                  type="button"
+                  className={`btn tiny ${modal.form.recurrence_pattern === 'weekly' ? 'primary' : 'outline'}`}
+                  onClick={() => setModal({ ...modal, form: { ...modal.form, recurrence_pattern: 'weekly' } })}
+                  data-testid="recurrence-weekly-btn"
+                >Recurring</button>
+                <button
+                  type="button"
+                  className={`btn tiny ${modal.form.recurrence_pattern === 'one_off' ? 'primary' : 'outline'}`}
+                  onClick={() => setModal({ ...modal, form: { ...modal.form, recurrence_pattern: 'one_off' } })}
+                  data-testid="recurrence-oneoff-btn"
+                >One-time</button>
+              </div>
+            </div>
+            {modal.form.recurrence_pattern === 'weekly' ? (
               <div className="field"><label>Day of week</label>
                 <select value={modal.form.day_of_week || 'Saturday'} onChange={e => setModal({ ...modal, form: { ...modal.form, day_of_week: e.target.value } })}>
                   {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-              <div className="field"><label>Category</label>
-                <select value={modal.form.category_focus || 'food'} onChange={e => setModal({ ...modal, form: { ...modal.form, category_focus: e.target.value } })}>
-                  <option value="food">Food</option><option value="craft">Craft</option><option value="mixed">Mixed</option>
-                </select>
-              </div>
+            ) : (
+              <div className="field"><label>Market date</label><input type="date" value={modal.form._one_off_date || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, _one_off_date: e.target.value } })} data-testid="one-off-date-input" /></div>
+            )}
+            <div className="field"><label>Category</label>
+              <select value={modal.form.category_focus || 'food'} onChange={e => setModal({ ...modal, form: { ...modal.form, category_focus: e.target.value } })}>
+                <option value="food">Food</option><option value="craft">Craft</option><option value="mixed">Mixed</option>
+              </select>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="field"><label>Season start</label><input type="date" value={modal.form.season_start || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_start: e.target.value } })} /></div>
-              <div className="field"><label>Season end</label><input type="date" value={modal.form.season_end || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_end: e.target.value } })} /></div>
-            </div>
+            {modal.form.recurrence_pattern === 'weekly' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="field"><label>Season start</label><input type="date" value={modal.form.season_start || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_start: e.target.value } })} /></div>
+                  <div className="field"><label>Season end</label><input type="date" value={modal.form.season_end || ''} onChange={e => setModal({ ...modal, form: { ...modal.form, season_end: e.target.value } })} /></div>
+                </div>
+                {modal.id && (
+                  <div className="field">
+                    <button
+                      type="button"
+                      className="btn outline tiny"
+                      onClick={() => generateSeasonDays(modal.id)}
+                      disabled={generating || !modal.form.day_of_week || !modal.form.season_start || !modal.form.season_end}
+                      title={!modal.form.day_of_week || !modal.form.season_start || !modal.form.season_end ? 'Set day of week and season start/end first' : 'Create a market day for every matching weekday in the season'}
+                      data-testid="generate-season-days-btn"
+                    >
+                      <Sparkles size={12} /> {generating ? 'Generating…' : 'Generate season dates'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
             <div className="field">
               <label>Default booth fee ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
               <input
@@ -235,6 +292,7 @@ function MarketRow({ m, onEdit, onDelete, onOpenPnl }) {
       <div>
         <div style={{ fontWeight: 600, marginBottom: 2 }}>{m.name}</div>
         <div style={{ fontSize: 12, color: 'var(--charcoal-soft)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <StatusPill variant={m.recurrence_pattern === 'weekly' ? 'active' : 'considering'}>{m.recurrence_pattern === 'weekly' ? 'Weekly' : 'One-time'}</StatusPill>
           <span>{m.day_of_week || 'Day TBD'}</span>
           {m.address && <><span>·</span><span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={10} />{m.address}</span></>}
           <span>·</span>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { SectionHead, Empty, AINote } from '@/components/ui-market';
 import { fmtCurrency, fmtDate, todayIso } from '@/lib/format';
+import { nextWeekdayOccurrence } from '@/lib/recurrence';
 import { useAuth } from '@/lib/auth';
 import { Sparkles, RefreshCw, Trash2, DollarSign } from 'lucide-react';
 
@@ -34,6 +35,15 @@ export default function Allocate() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    const market = markets.find(m => m.id === marketId);
+    if (!market) return;
+    if (market.recurrence_pattern === 'weekly' && market.day_of_week) {
+      const suggested = nextWeekdayOccurrence(market.day_of_week);
+      if (suggested) setMarketDate(suggested);
+    }
+  }, [marketId, markets]);
 
   const loadAllocs = async () => {
     if (!marketId || !marketDate) return;

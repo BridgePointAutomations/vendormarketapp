@@ -117,7 +117,7 @@ class MarketCreate(BaseModel):
     name: str
     address: Optional[str] = None
     day_of_week: Optional[str] = None
-    recurrence_pattern: Optional[str] = None
+    recurrence_pattern: Optional[str] = None  # 'weekly' (recurring) | 'one_off' | None (treated as one-off)
     season_start: Optional[str] = None
     season_end: Optional[str] = None
     category_focus: Optional[str] = None
@@ -146,7 +146,7 @@ class Market(BaseModel):
     name: str
     address: Optional[str] = None
     day_of_week: Optional[str] = None
-    recurrence_pattern: Optional[str] = None
+    recurrence_pattern: Optional[str] = None  # 'weekly' (recurring) | 'one_off' | None (treated as one-off)
     season_start: Optional[str] = None
     season_end: Optional[str] = None
     category_focus: Optional[str] = None
