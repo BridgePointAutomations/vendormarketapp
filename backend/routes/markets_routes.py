@@ -35,6 +35,60 @@ async def create_market(body: MarketCreate, vendor=Depends(get_current_vendor)):
     return doc
 
 
+@router.post('/clone-active', response_model=List[Market])
+async def clone_active_markets(vendor=Depends(get_current_vendor)):
+    """Clone every currently enrolled market (status in {approved, active}, not a candidate)
+    into a fresh **candidate** entry for the next season. Useful at season kickoff so
+    vendors don't re-enter recurring markets by hand.
+
+    - Skips markets that already have a same-named candidate (avoids duplicates on repeat clicks).
+    - Preserves recurrence/day-of-week/category info; strips season dates so vendor can update.
+    - Returns only the newly created candidate rows.
+    """
+    active = await db.markets.find({
+        'vendor_id': vendor['id'],
+        'is_candidate': False,
+        'status': {'$in': ['approved', 'active']},
+    }, {'_id': 0}).to_list(500)
+
+    existing_candidate_names = {
+        m['name'].strip().lower()
+        for m in await db.markets.find(
+            {'vendor_id': vendor['id'], 'is_candidate': True}, {'_id': 0, 'name': 1}
+        ).to_list(500)
+    }
+
+    now = datetime.now(timezone.utc).isoformat()
+    new_docs: list = []
+    for m in active:
+        name_key = (m.get('name') or '').strip().lower()
+        if not name_key or name_key in existing_candidate_names:
+            continue
+        new_doc = {
+            'id': str(uuid.uuid4()),
+            'vendor_id': vendor['id'],
+            'name': m['name'],
+            'address': m.get('address'),
+            'day_of_week': m.get('day_of_week'),
+            'recurrence_pattern': m.get('recurrence_pattern'),
+            'season_start': None,  # user fills in new season
+            'season_end': None,
+            'category_focus': m.get('category_focus'),
+            'is_candidate': True,
+            'status': 'considering',
+            'default_booth_fee': m.get('default_booth_fee'),
+            'created_at': now,
+        }
+        new_docs.append(new_doc)
+        existing_candidate_names.add(name_key)
+
+    if new_docs:
+        await db.markets.insert_many(new_docs)
+        for d in new_docs:
+            d.pop('_id', None)
+    return new_docs
+
+
 @router.patch('/{mid}', response_model=Market)
 async def update_market(mid: str, body: MarketUpdate, vendor=Depends(get_current_vendor)):
     update = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Sparkles, ChevronRight } from 'lucide-react';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
 import PackingNextCard from '@/components/PackingNextCard';
+import PnlCompareCard from '@/components/PnlCompareCard';
 
 export default function Dashboard() {
   const { vendor } = useAuth();
@@ -133,6 +134,8 @@ export default function Dashboard() {
       </div>
 
       {/* Single AI note slot at the bottom (per design outline: 'One AI note (restock) at the bottom, chalkboard-hand style') */}
+      <PnlCompareCard />
+
       {vendor?.tier === 'paid' && dash.market_cards.some(m => m.next_date) && (
         <div>
           <div className="section-head">

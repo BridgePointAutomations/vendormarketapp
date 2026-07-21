@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Minus, Download, Printer } from 'lucide-react';
 import api from '@/lib/api';
 import { fmtCurrency, fmtDate } from '@/lib/format';
+import { downloadCsv } from '@/lib/download';
 
 /**
  * SeasonPnlModal — read-only view of estimated season P&L for a single market.
@@ -42,9 +43,35 @@ export default function SeasonPnlModal({ marketId, marketName, onClose }) {
             <div className="display-xs text-muted">Season P&amp;L</div>
             <div className="display-md" style={{ marginTop: 2 }}>{marketName}</div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="btn ghost tiny" data-testid="season-pnl-close" style={{ padding: 6 }}>
-            <X size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={async () => {
+                try {
+                  await downloadCsv(`/pnl/season/${marketId}/export`, `season_pnl_${marketId}.csv`);
+                } catch (e) {
+                  alert(e?.response?.data?.detail || 'Export failed');
+                }
+              }}
+              className="btn outline tiny"
+              disabled={loading || !data || !data.days || data.days.length === 0}
+              data-testid="season-pnl-export"
+              title="Download CSV for spreadsheets or tax records"
+            >
+              <Download size={12} /> CSV
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="btn outline tiny"
+              disabled={loading || !data}
+              data-testid="season-pnl-print"
+              title="Open browser print dialog"
+            >
+              <Printer size={12} /> Print
+            </button>
+            <button onClick={onClose} aria-label="Close" className="btn ghost tiny" data-testid="season-pnl-close" style={{ padding: 6 }}>
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <p style={{ fontSize: 12, color: 'var(--charcoal-soft)', marginBottom: 16 }}>

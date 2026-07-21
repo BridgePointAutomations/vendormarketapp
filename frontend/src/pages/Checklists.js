@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Check, Square, Plus, Trash2, GripVertical, Store, ClipboardList, ArrowUp, ArrowDown, Info,
+  Check, Square, Plus, Trash2, GripVertical, Store, ClipboardList, ArrowUp, ArrowDown, Info, Download, Printer,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { SectionHead, Empty } from '@/components/ui-market';
 import { fmtDate, todayIso } from '@/lib/format';
+import { downloadCsv } from '@/lib/download';
 
 export default function Checklists() {
   const [tab, setTab] = useState('getting-started');
@@ -283,7 +284,35 @@ function PackingPanel({ markets, selectedMarketId, onSelectMarket }) {
               <div className="display-md" style={{ marginTop: 2 }}>{checklist.market_name}</div>
               <div style={{ fontSize: 12, color: 'var(--charcoal-soft)', marginTop: 2 }}>{fmtDate(marketDate)}</div>
             </div>
-            <div className="number" style={{ fontSize: 15, color: 'var(--charcoal-soft)' }} data-testid="packing-progress">{done}/{total} packed</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div className="number" style={{ fontSize: 15, color: 'var(--charcoal-soft)' }} data-testid="packing-progress">{done}/{total} packed</div>
+              <button
+                className="btn outline tiny"
+                onClick={async () => {
+                  try {
+                    await downloadCsv('/checklists/packing/export', `packing_${selectedMarketId}.csv`, {
+                      market_id: selectedMarketId,
+                      market_date: marketDate || undefined,
+                    });
+                  } catch (e) {
+                    alert(e?.response?.data?.detail || 'Export failed');
+                  }
+                }}
+                data-testid="packing-export-btn"
+                title="Download CSV of this packing list"
+                disabled={!checklist || total === 0}
+              >
+                <Download size={12} /> CSV
+              </button>
+              <button
+                className="btn outline tiny"
+                onClick={() => window.print()}
+                data-testid="packing-print-btn"
+                title="Open the browser print dialog"
+              >
+                <Printer size={12} /> Print
+              </button>
+            </div>
           </div>
           <ProgressBar pct={pct} />
 

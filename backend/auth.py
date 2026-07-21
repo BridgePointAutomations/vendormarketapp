@@ -8,7 +8,13 @@ from typing import Optional
 
 from db import db
 
-JWT_SECRET = os.environ.get('JWT_SECRET', 'change-me')
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET or JWT_SECRET.lower() in {'change-me', 'changeme', 'secret', ''}:
+    raise RuntimeError(
+        "JWT_SECRET environment variable is missing or set to a placeholder. "
+        "Set a strong random value in backend/.env before starting the server "
+        "(e.g. `python -c \"import secrets; print(secrets.token_urlsafe(48))\"`)."
+    )
 JWT_ALG = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXPIRE_HOURS = int(os.environ.get('JWT_EXPIRE_HOURS', 168))
 

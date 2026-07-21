@@ -40,6 +40,16 @@
   - **Phase A: Per-market-day P&L** — **COMPLETED**
   - **Phase B: Checklists** — **COMPLETED**
   - **Phase C: AI Refinements** — **COMPLETED**
+- ✅ **Phase D: Cleanup & polish** — **COMPLETED**
+  - JWT_SECRET fallback removed; server refuses to start on placeholder secret.
+  - CORS default hardened: empty allowlist by default; wildcard drops credentials with warning.
+  - Removed unused `swr` dependency from `frontend/package.json`.
+  - `POST /markets/clone-active` — copies enrolled markets into fresh "considering" candidates.
+  - `GET /pnl/compare` + Dashboard *Market comparison* widget ranking markets by avg net/day.
+  - CSV export: `GET /pnl/season/{market_id}/export` and `GET /checklists/packing/export`.
+  - Print buttons on Season P&L modal and Packing list panel.
+  - Root README replaced with real quickstart (env vars, seed data, endpoints, roadmap).
+  - Compliance email delivery **NOT wired** — deferred at user request; email provider still unset.
 
 ---
 

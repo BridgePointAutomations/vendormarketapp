@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi.responses import StreamingResponse
 from typing import Optional, List
 from datetime import date, timedelta
+import csv
+import io
 
 from db import db
 from auth import get_current_vendor
@@ -102,6 +105,54 @@ async def get_packing(
         'items': items,
         'checked_item_ids': checked_ids,
     }
+
+
+@router.get('/packing/export')
+async def export_packing(
+    market_id: str = Query(...),
+    market_date: Optional[str] = Query(None),
+    vendor=Depends(get_current_vendor),
+):
+    """CSV export of the packing checklist — printable for the truck.
+    Rows: item label, hint, checked (✓/○). Includes a header with market name + date."""
+    market = await db.markets.find_one({'id': market_id, 'vendor_id': vendor['id']}, {'_id': 0})
+    if not market:
+        raise HTTPException(status_code=404, detail='Market not found')
+    doc = await seed_packing_for_market(vendor['id'], market_id)
+    items = await _items_for(doc['id'], vendor['id'])
+
+    checked_ids: set = set()
+    if market_date and market_date >= _today_iso():
+        rows = await db.packing_checks.find({
+            'vendor_id': vendor['id'],
+            'checklist_id': doc['id'],
+            'market_date': market_date,
+        }, {'_id': 0}).to_list(500)
+        checked_ids = {r['item_id'] for r in rows}
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    header_line = f"Packing checklist — {market.get('name')}"
+    if market_date:
+        header_line += f" — {market_date}"
+    writer.writerow([header_line])
+    writer.writerow([])
+    writer.writerow(['Done', 'Item', 'Notes'])
+    for it in items:
+        checked = 'X' if it['id'] in checked_ids else ''
+        writer.writerow([checked, it.get('label', ''), it.get('hint', '') or ''])
+
+    csv_data = buf.getvalue()
+    safe_name = ''.join(c if c.isalnum() or c in '-_ ' else '_' for c in (market.get('name') or 'market')).strip().replace(' ', '_')
+    filename = f"marketops_packing_{safe_name}"
+    if market_date:
+        filename += f"_{market_date}"
+    filename += '.csv'
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------- Items CRUD (works for both types) ----------

@@ -1,6 +1,34 @@
 [
   {
-    "content": "Update plan.md marking Phase C COMPLETED",
+    "content": "Task #7 Security: remove 'change-me' JWT fallback + tighten CORS defaults",
+    "status": "completed"
+  },
+  {
+    "content": "Task #2 Remove unused swr dependency from package.json",
+    "status": "completed"
+  },
+  {
+    "content": "Task #4 Copy last year's markets — clone active markets into 'considering' for new season",
+    "status": "completed"
+  },
+  {
+    "content": "Task #3 CSV export for Season P&L + Packing checklist (backend + frontend buttons)",
+    "status": "completed"
+  },
+  {
+    "content": "Task #6 P&L quick-compare widget on Dashboard (rank markets by season net profit)",
+    "status": "completed"
+  },
+  {
+    "content": "Task #8 Replace stub README.md with real quickstart",
+    "status": "completed"
+  },
+  {
+    "content": "Update plan.md with new phase status",
+    "status": "completed"
+  },
+  {
+    "content": "Verify end-to-end via curl + screenshot",
     "status": "completed"
   }
 ]

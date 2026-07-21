@@ -3,7 +3,7 @@ import api from '@/lib/api';
 import { SectionHead, Empty, Modal, StatusPill } from '@/components/ui-market';
 import SeasonPnlModal from '@/components/SeasonPnlModal';
 import { fmtDate } from '@/lib/format';
-import { Plus, Pencil, Trash2, Sparkles, MapPin, DollarSign } from 'lucide-react';
+import { Plus, Pencil, Trash2, Sparkles, MapPin, DollarSign, Copy } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 const empty = { name: '', address: '', day_of_week: 'Saturday', season_start: '', season_end: '', category_focus: 'food', is_candidate: false, status: 'considering', default_booth_fee: '' };
@@ -73,13 +73,46 @@ export default function Markets() {
     } finally { setFitLoading(false); }
   };
 
+  const [cloning, setCloning] = useState(false);
+  const cloneLastSeason = async () => {
+    const enrolledCount = items.filter((i) => !i.is_candidate && ['approved', 'active'].includes(i.status)).length;
+    if (!enrolledCount) {
+      alert("You don't have any approved or active markets to copy yet.");
+      return;
+    }
+    if (!confirm(`Copy ${enrolledCount} enrolled market${enrolledCount !== 1 ? 's' : ''} into fresh "considering" entries for a new season? Existing candidates with the same name are skipped.`)) return;
+    setCloning(true);
+    try {
+      const { data } = await api.post('/markets/clone-active');
+      await load();
+      if (data.length === 0) {
+        alert("Nothing to copy — every enrolled market already has a matching candidate.");
+      } else {
+        alert(`Created ${data.length} candidate market${data.length !== 1 ? 's' : ''}. Edit season dates and status once you decide.`);
+      }
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Copy failed');
+    } finally { setCloning(false); }
+  };
+
   const enrolled = items.filter(i => !i.is_candidate);
   const candidates = items.filter(i => i.is_candidate);
 
   return (
     <div>
       <SectionHead title="My Markets">
-        <button className="btn primary tiny" onClick={openCreate} data-testid="add-market-btn"><Plus size={13} /> Add market</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            className="btn outline tiny"
+            onClick={cloneLastSeason}
+            disabled={cloning}
+            data-testid="clone-markets-btn"
+            title="Copy your enrolled markets into 'considering' entries so you can plan the next season."
+          >
+            <Copy size={12} /> {cloning ? 'Copying…' : "Copy last season's markets"}
+          </button>
+          <button className="btn primary tiny" onClick={openCreate} data-testid="add-market-btn"><Plus size={13} /> Add market</button>
+        </div>
       </SectionHead>
       <p style={{ color: 'var(--charcoal-soft)', marginBottom: 24, fontSize: 14 }}>
         A private list of the markets you attend. Add ones you&apos;re considering to have the AI weigh in.
