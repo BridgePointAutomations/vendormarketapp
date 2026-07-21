@@ -12,8 +12,6 @@ schema. Exit code 0 only on full pass.
 
 import asyncio
 import json
-import os
-import re
 import sys
 import traceback
 from datetime import date, timedelta
@@ -24,57 +22,11 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage  # noqa: E402
-
-EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
-MODEL_PROVIDER = "anthropic"
-MODEL_NAME = "claude-sonnet-4-6"
-
-SYSTEM_PROMPT = (
-    "You are the MarketOps AI assistant for solo market vendors "
-    "(farmers markets, craft fairs). You reply with ONE JSON object or array "
-    "and nothing else — no prose, no markdown fences, no commentary. "
-    "Base every number on the provided history; if history is sparse, say so "
-    "in the rationale and set confidence='low'. Never invent data."
-)
+from ai_client import ask_claude  # noqa: E402
 
 
-def _extract_json(text: str):
-    """Strip markdown fences / stray prose and json.loads() the payload."""
-    if text is None:
-        raise ValueError("Empty AI response")
-    cleaned = text.strip()
-    # Strip fenced blocks
-    fence = re.search(r"```(?:json)?\s*(.*?)```", cleaned, re.DOTALL | re.IGNORECASE)
-    if fence:
-        cleaned = fence.group(1).strip()
-    # Extract the outermost JSON object or array
-    if not cleaned.startswith(("{", "[")):
-        first = min(
-            (i for i in (cleaned.find("{"), cleaned.find("[")) if i != -1),
-            default=-1,
-        )
-        if first == -1:
-            raise ValueError(f"No JSON found in response: {cleaned[:200]}")
-        cleaned = cleaned[first:]
-    return json.loads(cleaned)
-
-
-async def _ask(session_id: str, user_prompt: str, max_retries: int = 2):
-    last_err = None
-    for attempt in range(max_retries + 1):
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"{session_id}-{attempt}",
-            system_message=SYSTEM_PROMPT,
-        ).with_model(MODEL_PROVIDER, MODEL_NAME)
-        try:
-            raw = await chat.send_message(UserMessage(text=user_prompt))
-            return _extract_json(raw), raw
-        except Exception as e:  # noqa: BLE001
-            last_err = e
-            print(f"  [retry {attempt+1}] parse/API error: {e}")
-    raise RuntimeError(f"Exceeded retries: {last_err}")
+async def _ask(session_id: str, user_prompt: str):
+    return await ask_claude(user_prompt, session_hint=session_id)
 
 
 # -------- Test 1: Restock suggestions (dense history) --------------------
@@ -108,7 +60,7 @@ async def test_restock_dense():
         '[{"product_id": str, "suggested_qty": int, "rationale": str, "confidence": "low"|"medium"|"high"}]\n'
         f"CONTEXT:\n{json.dumps(payload)}"
     )
-    parsed, _ = await _ask("restock-dense", prompt)
+    parsed = await _ask("restock-dense", prompt)
     assert isinstance(parsed, list) and len(parsed) >= 1, "Expected non-empty JSON array"
     for row in parsed:
         assert set(["product_id", "suggested_qty", "rationale", "confidence"]).issubset(row.keys()), row
@@ -149,7 +101,7 @@ async def test_market_fit():
         '{"market_id": str, "fit_assessment": "strong_fit"|"possible_fit"|"poor_fit", "reason": str, "confidence": "low"|"medium"|"high"}\n'
         f"CONTEXT:\n{json.dumps(payload)}"
     )
-    parsed, _ = await _ask("market-fit", prompt)
+    parsed = await _ask("market-fit", prompt)
     assert isinstance(parsed, dict)
     assert set(["market_id", "fit_assessment", "reason", "confidence"]).issubset(parsed.keys()), parsed
     assert parsed["fit_assessment"] in {"strong_fit", "possible_fit", "poor_fit"}
@@ -184,7 +136,7 @@ async def test_revenue_dense():
         '"confidence": "low"|"medium"|"high"}\n'
         f"CONTEXT:\n{json.dumps(payload)}"
     )
-    parsed, _ = await _ask("revenue-dense", prompt)
+    parsed = await _ask("revenue-dense", prompt)
     assert isinstance(parsed, dict)
     assert set(["market_id", "market_date", "projected_revenue", "rationale", "confidence"]).issubset(parsed.keys())
     assert isinstance(parsed["projected_revenue"], (int, float)) and parsed["projected_revenue"] > 0
@@ -212,7 +164,7 @@ async def test_revenue_sparse():
         '"confidence": "low"|"medium"|"high"}\n'
         f"CONTEXT:\n{json.dumps(payload)}"
     )
-    parsed, _ = await _ask("revenue-sparse", prompt)
+    parsed = await _ask("revenue-sparse", prompt)
     assert isinstance(parsed, dict)
     assert parsed["confidence"] == "low", f"Expected low confidence on sparse data, got {parsed['confidence']}"
     assert isinstance(parsed["projected_revenue"], (int, float))
