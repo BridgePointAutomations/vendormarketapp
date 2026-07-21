@@ -7,9 +7,11 @@ suggestions and market-fit reviews.
 
 - Frontend: React 19 + Craco + Shadcn UI + Tailwind
 - Backend: FastAPI + Motor (async MongoDB)
-- AI: Claude Sonnet via `emergentintegrations` (Emergent LLM key)
-- Preview: served behind Kubernetes ingress (`/api/*` → backend `:8001`, all
+- AI: Claude Sonnet via the official `anthropic` SDK
+- Local dev: served behind Kubernetes ingress (`/api/*` → backend `:8001`, all
   other paths → frontend `:3000`)
+- Deployment: see [`DEPLOY.md`](./DEPLOY.md) for the Vercel setup (single
+  project — static frontend + FastAPI as a Python serverless function)
 
 ---
 
@@ -45,8 +47,9 @@ suggestions and market-fit reviews.
 | `JWT_SECRET`      | yes      | **Must be a strong random value.** The server refuses to start on `change-me` |
 | `JWT_ALGORITHM`   | no       | Defaults to `HS256`                                                           |
 | `JWT_EXPIRE_HOURS`| no       | Defaults to `168` (7 days)                                                    |
-| `EMERGENT_LLM_KEY`| yes      | Provided by the Emergent workspace; powers Claude via `emergentintegrations`  |
-| `CORS_ORIGINS`    | yes      | Comma-separated allowed origins (e.g. `https://your-app.preview.emergentagent.com`). `*` still works in dev but disables credential passing |
+| `ANTHROPIC_API_KEY`| yes     | Powers Claude via the `anthropic` SDK (AI Insights routes only)              |
+| `ANTHROPIC_MODEL` | no       | Defaults to `claude-sonnet-4-5-20250929`                                      |
+| `CORS_ORIGINS`    | yes      | Comma-separated allowed origins (e.g. `https://your-app.vercel.app`). `*` still works in dev but disables credential passing |
 
 Generate a JWT secret with:
 ```bash

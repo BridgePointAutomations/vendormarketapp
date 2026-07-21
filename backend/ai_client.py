@@ -2,14 +2,12 @@
 import os
 import json
 import re
-import uuid
 from typing import Any, Optional
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from anthropic import AsyncAnthropic
 
-EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
-MODEL_PROVIDER = 'anthropic'
-MODEL_NAME = 'claude-sonnet-4-6'
+ANTHROPIC_API_KEY = os.environ['ANTHROPIC_API_KEY']
+MODEL_NAME = os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929')
 
 SYSTEM_PROMPT = (
     'You are the MarketOps AI assistant for solo market vendors '
@@ -18,6 +16,8 @@ SYSTEM_PROMPT = (
     'Base every number on the provided history; if history is sparse, say so '
     "in the rationale and set confidence='low'. Never invent data."
 )
+
+_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
 
 def _extract_json(text: str) -> Any:
@@ -36,16 +36,18 @@ def _extract_json(text: str) -> Any:
 
 
 async def ask_claude(user_prompt: str, session_hint: Optional[str] = None, max_retries: int = 2) -> Any:
+    # session_hint is kept for call-site compatibility; the Messages API is
+    # stateless per-request so there's no session to attach it to.
     last_err: Optional[Exception] = None
     for attempt in range(max_retries + 1):
-        sid = f"{session_hint or 'ai'}-{uuid.uuid4().hex[:8]}-{attempt}"
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=sid,
-            system_message=SYSTEM_PROMPT,
-        ).with_model(MODEL_PROVIDER, MODEL_NAME)
         try:
-            raw = await chat.send_message(UserMessage(text=user_prompt))
+            message = await _client.messages.create(
+                model=MODEL_NAME,
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                messages=[{'role': 'user', 'content': user_prompt}],
+            )
+            raw = ''.join(block.text for block in message.content if block.type == 'text')
             return _extract_json(raw)
         except Exception as e:  # noqa: BLE001
             last_err = e

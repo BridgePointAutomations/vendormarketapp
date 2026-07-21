@@ -1,3 +1,5 @@
+# Mirrors backend/requirements.txt — Vercel's Python builder resolves
+# dependencies for api/index.py from this root-level file, not backend/'s.
 fastapi==0.110.1
 uvicorn==0.25.0
 python-dotenv>=1.0.1

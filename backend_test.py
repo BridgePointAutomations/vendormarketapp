@@ -2,13 +2,15 @@
 MarketOps Backend API Test Suite
 Tests all endpoints with vendor isolation, tier gating, and AI integration
 """
+import os
 import requests
 import sys
 import json
 from datetime import datetime, date, timedelta
 
 class MarketOpsAPITester:
-    def __init__(self, base_url="https://marketops-preview.preview.emergentagent.com"):
+    def __init__(self, base_url=None):
+        base_url = base_url or os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001")
         self.base_url = base_url
         self.token = None
         self.vendor_id = None
