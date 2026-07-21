@@ -37,8 +37,9 @@
   - Settings: replay tour, run wizard, restore checklist, re-show welcome
 - ✅ Backend supports onboarding flags via `PATCH /auth/me/onboarding`.
 - ⏳ V2 work has started:
-  - **Phase A: Per-market-day P&L** — **IN PROGRESS**
-  - Phases B/C pending
+  - **Phase A: Per-market-day P&L** — **COMPLETED**
+  - **Phase B: Checklists** — **COMPLETED**
+  - **Phase C: AI Refinements** — **COMPLETED**
 
 ---
 
@@ -125,7 +126,7 @@
 
 ---
 
-### Phase B — Checklists (Free tier) — PENDING
+### Phase B — Checklists (Free tier) — COMPLETED
 **Purpose**
 - Help new vendors set up correctly and create a weekly “packing” habit.
 
@@ -172,7 +173,7 @@
 
 ---
 
-### Phase C — AI Refinements (Paid tier only) — PENDING
+### Phase C — AI Refinements (Paid tier only) — COMPLETED
 **Guiding constraints**
 - AI outputs are advisory only; never auto-apply without user action.
 - Core tracking features must work fully if Claude is unavailable (graceful degradation).
@@ -200,10 +201,15 @@
   - If unsupported, do not block; ship DB caching only.
 
 **Phase C test pass**
-- Restock returns “not enough history yet” state correctly.
-- Revenue endpoint returns projected profit and uses unit_cost + booth_fee.
-- Rollup includes both projections and actuals.
-- AI downtime does not break any non-AI flows.
+- ✅ Restock returns `insufficient_history: true` when distinct market_dates < 3 (verified with Beachwood: 0 dates → clear "not enough history" message, no AI call).
+- ✅ Restock with sufficient history returns high-quality suggestions AND intelligently reasons about anomalous data (excluded 2026-07-23 outlier).
+- ✅ Revenue endpoint returns `projected_revenue`, `projected_cogs`, `projected_booth_fee`, `projected_profit` (verified Shaker: rev $488.65 − cogs $91.35 − fee $45 = profit $352.20).
+- ✅ Revenue with sparse history returns `insufficient_history: true` with null projections.
+- ✅ DB-level result caching with fingerprint auto-invalidation: uncached ~19s, cached hits <0.4s. Fingerprint incorporates allocation count + market_day count + latest created_at, so any data change auto-invalidates.
+- ✅ Rollup extended with `avg_profit_per_visit`, `total_profit`, and per-day `profit` in series.
+- ✅ AI Insights page now shows a `Season Projected Profit` stat and per-market `Est. profit / visit` rows.
+- ⚠️ Prompt caching via Anthropic `cache_control` NOT supported by current `emergentintegrations.LlmChat` wrapper (system_message is a plain string, no pass-through). Gracefully fell back to DB result caching only, as planned.
+- ✅ AI downtime does not break any non-AI flows (P&L, checklists, CRUD all independent).
 
 ---
 
@@ -243,6 +249,7 @@
 - Dashboard shows next market packing completion status.
 
 ### Phase C — AI (Paid)
-- Restock and projections never fabricate data when history is insufficient.
-- Revenue projections include profit when cost/fees exist.
-- AI responses are cached; core app works without Claude.
+- ✅ Restock and revenue never fabricate data when history is insufficient (`insufficient_history: true` short-circuit at N<3 distinct market dates).
+- ✅ Revenue projections include `projected_profit` alongside revenue, using injected `unit_cost` and `booth_fee` from market_days/market defaults.
+- ✅ AI responses are cached via fingerprint-based DB cache in `ai_cache` collection (auto-invalidates on data changes). Core app works fully without Claude.
+- ⚠️ Anthropic prompt caching (`cache_control`) not exposed by `emergentintegrations`; DB result caching used as the graceful-fallback strategy per plan.

@@ -249,23 +249,50 @@ export default function Allocate() {
           )}
 
           {/* Revenue projection callout ABOVE the product grid (per design outline) */}
-          {revenue && (
-            <AINote testId="revenue-projection" label="REVENUE PROJECTION">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          {revenue && revenue.insufficient_history && (
+            <AINote testId="revenue-insufficient" label="NOT ENOUGH HISTORY YET">
+              <div style={{ fontSize: 13 }}>
+                {revenue.message} Once you have {revenue.min_required_dates} logged market days, AI projections will unlock.
+              </div>
+            </AINote>
+          )}
+          {revenue && !revenue.insufficient_history && (
+            <AINote testId="revenue-projection" label="REVENUE & PROFIT PROJECTION">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: 'Oswald', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8f7414' }}>
-                  Projected revenue · conf: {revenue.confidence}
+                  Projection · conf: {revenue.confidence}{revenue.cached ? ' · cached' : ''}
                 </span>
-                <span className="number" style={{ fontSize: 26, color: 'var(--charcoal)' }}>{fmtCurrency(revenue.projected_revenue)}</span>
+                <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: 'var(--charcoal-soft)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Revenue</div>
+                    <div className="number" style={{ fontSize: 22, color: 'var(--charcoal)' }} data-testid="revenue-projected-revenue">{fmtCurrency(revenue.projected_revenue)}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: 'var(--charcoal-soft)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Est. Profit</div>
+                    <div className="number" style={{ fontSize: 22, color: (revenue.projected_profit || 0) >= 0 ? 'var(--crate-green)' : 'var(--stamp-red)' }} data-testid="revenue-projected-profit">{fmtCurrency(revenue.projected_profit)}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginBottom: 6 }}>
+                Revenue &minus; COGS ({fmtCurrency(revenue.projected_cogs)}) &minus; booth fee ({fmtCurrency(revenue.projected_booth_fee)}) = est. profit. Estimates only.
               </div>
               <div>{revenue.rationale}</div>
             </AINote>
           )}
 
-          {restock && (
+          {restock && restock.insufficient_history && (
+            <div className="ai-note-block" style={{ marginTop: 14, borderColor: '#d4b64a', background: '#fdf7e6' }} data-testid="restock-insufficient">
+              <div style={{ fontFamily: 'Oswald', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8f7414', marginBottom: 6 }}>
+                Not enough history yet
+              </div>
+              <div className="ai-note" style={{ fontSize: 13 }}>{restock.message}</div>
+            </div>
+          )}
+          {restock && !restock.insufficient_history && (
             <div className="ai-note-block" style={{ marginTop: 14 }} data-testid="restock-block">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontFamily: 'Oswald', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8f7414' }}>
-                  Restock suggestions
+                  Restock suggestions{restock.cached ? ' · cached' : ''}
                 </span>
                 <button className="btn primary tiny" onClick={applyRestock} data-testid="apply-restock"><RefreshCw size={11} /> Apply all</button>
               </div>

@@ -67,6 +67,7 @@ export default function AIInsights() {
   const totalAvg = Object.values(rollups).reduce((s, r) => s + (r?.avg_per_visit || 0), 0);
   const totalVisits = Object.values(rollups).reduce((s, r) => s + (r?.visits || 0), 0);
   const grandTotal = Object.values(rollups).reduce((s, r) => s + (r?.total || 0), 0);
+  const grandProfit = Object.values(rollups).reduce((s, r) => s + (r?.total_profit || 0), 0);
 
   if (vendor?.tier !== 'paid') {
     return (
@@ -92,10 +93,11 @@ export default function AIInsights() {
       </p>
 
       {/* Season stat row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 26 }}>
-        <StatBlock label="Average per visit (all markets)" value={fmtCurrency(totalAvg)} hint="Sum of per-market avg" testId="stat-avg" />
-        <StatBlock label="Total visits with projections" value={totalVisits} hint="Across the season so far" testId="stat-visits" />
-        <StatBlock label="Season projected total" value={fmtCurrency(grandTotal)} hint="All cached projections" testId="stat-grand" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 26 }}>
+        <StatBlock label="Average per visit" value={fmtCurrency(totalAvg)} hint="Sum of per-market avg" testId="stat-avg" />
+        <StatBlock label="Total visits projected" value={totalVisits} hint="Across the season so far" testId="stat-visits" />
+        <StatBlock label="Season projected revenue" value={fmtCurrency(grandTotal)} hint="All cached projections" testId="stat-grand" />
+        <StatBlock label="Season projected profit" value={fmtCurrency(grandProfit)} hint="Revenue &minus; costs &minus; fees" testId="stat-profit" />
       </div>
 
       {/* Per-market rollup */}
@@ -120,7 +122,13 @@ export default function AIInsights() {
                         <TrendIcon size={14} /> {trend}
                       </div>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--charcoal-soft)', marginTop: 2 }}>avg / visit · {r.visits} visit{r.visits !== 1 && 's'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--charcoal-soft)', marginTop: 2 }}>avg revenue / visit · {r.visits} visit{r.visits !== 1 && 's'}</div>
+                    {(r.avg_profit_per_visit || r.total_profit) ? (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--charcoal-line)', display: 'flex', justifyContent: 'space-between', fontSize: 12 }} data-testid={`rollup-profit-${m.id}`}>
+                        <span style={{ color: 'var(--charcoal-soft)' }}>Est. profit / visit</span>
+                        <span className="number" style={{ color: (r.avg_profit_per_visit || 0) >= 0 ? 'var(--crate-green)' : 'var(--stamp-red)' }}>{fmtCurrency(r.avg_profit_per_visit)}</span>
+                      </div>
+                    ) : null}
                   </>
                 ) : (
                   <div style={{ fontSize: 13, color: 'var(--charcoal-soft)' }}>
@@ -152,9 +160,17 @@ export default function AIInsights() {
           </button>
         </div>
 
-        {restocks[selectedMarket] && (
+        {restocks[selectedMarket] && restocks[selectedMarket].insufficient_history && (
+          <div className="ai-note-block" style={{ marginTop: 16, borderColor: '#d4b64a', background: '#fdf7e6' }} data-testid="insights-restock-insufficient">
+            <div className="display-xs text-muted" style={{ marginBottom: 4 }}>Not enough history yet</div>
+            <div className="ai-note">{restocks[selectedMarket].message}</div>
+          </div>
+        )}
+        {restocks[selectedMarket] && !restocks[selectedMarket].insufficient_history && (
           <div className="ai-note-block" style={{ marginTop: 16 }}>
-            <div className="display-xs text-muted" style={{ marginBottom: 4 }}>Suggested for {fmtDate(restocks[selectedMarket].market_date)}</div>
+            <div className="display-xs text-muted" style={{ marginBottom: 4 }}>
+              Suggested for {fmtDate(restocks[selectedMarket].market_date)}{restocks[selectedMarket].cached ? ' · cached' : ''}
+            </div>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {restocks[selectedMarket].suggestions.map(s => (
                 <li key={s.product_id} className="ai-note" style={{ marginBottom: 3 }}>
