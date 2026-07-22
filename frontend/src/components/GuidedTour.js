@@ -46,19 +46,31 @@ const PADDING = 8;
 const TOOLTIP_W = 320;
 const TOOLTIP_GAP = 14;
 
+// Find the first matching element that is actually visible (non-zero size).
+// The nav item a tour step targets may exist twice in the DOM — once in the
+// desktop sidebar, once in the mobile tab bar / "More" sheet — with only one
+// visible at a given viewport width via CSS.
+function resolveVisibleTarget(testid) {
+  const el = document.querySelector(`[data-testid="${testid}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 ? el : null;
+}
+
 export default function GuidedTour() {
   const { tourActive, endTour } = useOnboarding();
   const [stepIndex, setStepIndex] = useState(0);
   const [rect, setRect] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, placement: 'right' });
   const [missingTarget, setMissingTarget] = useState(false);
+  const [tooltipWidth, setTooltipWidth] = useState(TOOLTIP_W);
 
   const step = TOUR_STEPS[stepIndex];
   const isLast = stepIndex === TOUR_STEPS.length - 1;
 
   const measure = useCallback(() => {
     if (!step) return;
-    const el = document.querySelector(`[data-testid="${step.testid}"]`);
+    const el = resolveVisibleTarget(`tab-${step.testid}`) || resolveVisibleTarget(step.testid);
     if (!el) {
       setMissingTarget(true);
       setRect(null);
@@ -73,18 +85,21 @@ export default function GuidedTour() {
       height: r.height + PADDING * 2,
     });
 
-    // Prefer right placement; fall back to below/above if we're near the viewport edge.
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const tw = Math.min(TOOLTIP_W, vw - 32);
+    setTooltipWidth(tw);
+
+    // Prefer right placement; fall back to below/above if we're near the viewport edge.
     const rightSpace = vw - (r.right + TOOLTIP_GAP);
     let placement = 'right';
     let top = r.top;
-    let left = r.right + TOOLTIP_GAP;
-    if (rightSpace < TOOLTIP_W + 20) {
+    let left = Math.max(16, Math.min(r.right + TOOLTIP_GAP, vw - tw - 16));
+    if (rightSpace < tw + 20) {
       // place below the element
       placement = 'below';
       top = r.bottom + TOOLTIP_GAP;
-      left = Math.max(16, Math.min(r.left, vw - TOOLTIP_W - 16));
+      left = Math.max(16, Math.min(r.left, vw - tw - 16));
       if (top + 200 > vh) {
         placement = 'above';
         top = Math.max(16, r.top - 200 - TOOLTIP_GAP);
@@ -181,7 +196,7 @@ export default function GuidedTour() {
         style={{
           position: 'fixed',
           top: tooltipPos.top, left: tooltipPos.left,
-          width: TOOLTIP_W,
+          width: tooltipWidth,
           background: 'var(--canvas)',
           border: '1px solid var(--line)',
           borderRadius: 8,

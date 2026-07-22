@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Check, Square, Plus, Trash2, GripVertical, Store, ClipboardList, ArrowUp, ArrowDown, Info, Download, Printer,
+  Check, Square, Plus, Trash2, Store, ClipboardList, ArrowUp, ArrowDown, Info, Download, Printer,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { SectionHead, Empty } from '@/components/ui-market';
@@ -20,7 +20,9 @@ export default function Checklists() {
         const enrolled = data.filter((m) => !m.is_candidate);
         setMarkets(enrolled);
         if (enrolled.length && !selectedMarketId) setSelectedMarketId(enrolled[0].id);
-      } catch (_) { /* ignore */ }
+      } catch (err) {
+        console.error('Failed to load markets for checklists', err);
+      }
     })();
   }, []);
 
@@ -204,7 +206,10 @@ function PackingPanel({ markets, selectedMarketId, onSelectMarket }) {
       await api.post(`/checklists/${checklist.id}/checks`, {
         item_id: item.id, market_date: marketDate, checked: !wasChecked,
       });
-    } catch (_) { load(); }
+    } catch (err) {
+      console.error('Failed to toggle packing check', err);
+      load(); // rollback via refetch
+    }
   };
 
   const addItem = async (e) => {
@@ -225,7 +230,10 @@ function PackingPanel({ markets, selectedMarketId, onSelectMarket }) {
     try {
       await api.delete(`/checklists/items/${item.id}`);
       await load();
-    } catch (_) { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to remove packing item', err);
+      alert(err?.response?.data?.detail || 'Failed to remove item');
+    }
   };
 
   const moveItem = async (item, direction) => {
@@ -242,7 +250,10 @@ function PackingPanel({ markets, selectedMarketId, onSelectMarket }) {
         api.patch(`/checklists/items/${b.id}`, { sort_order: a.sort_order }),
       ]);
       await load();
-    } catch (_) { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to reorder packing item', err);
+      alert(err?.response?.data?.detail || 'Failed to reorder item');
+    }
   };
 
   if (markets.length === 0) {
@@ -372,7 +383,6 @@ function PackingRow({ item, checked, onToggle, onDelete, onMoveUp, onMoveDown, d
       }}
       data-testid={`packing-item-${item.id}`}
     >
-      <GripVertical size={14} color="var(--line-dashed)" style={{ flexShrink: 0 }} />
       <button
         onClick={onToggle}
         disabled={disabled}

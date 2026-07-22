@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, PlayCircle, Store, Sparkles } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/context/OnboardingContext';
-import { useDialogA11y } from '@/hooks/use-dialog-a11y';
+import { Modal } from '@/components/ui-market';
 
 const SESSION_KEY = 'mo_welcome_seen_session';
 
@@ -59,21 +59,10 @@ export default function WelcomeModal() {
     setOpen(false);
   };
 
-  useDialogA11y(open, handleMaybeLater);
-
-  if (!open || !vendor) return null;
+  if (!vendor) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleMaybeLater} data-testid="welcome-modal-overlay">
-      <div
-        className="modal"
-        style={{ maxWidth: 520 }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="welcome-modal-title"
-        data-testid="welcome-modal"
-      >
+    <Modal open={open} onClose={handleMaybeLater} testId="welcome-modal" hideHeader style={{ maxWidth: 520 }}>
         <button
           onClick={handleMaybeLater}
           className="btn ghost tiny"
@@ -145,7 +134,6 @@ export default function WelcomeModal() {
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--charcoal-soft)', justifyContent: 'center' }}>
           <Sparkles size={11} /> You can start these anytime from Settings.
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

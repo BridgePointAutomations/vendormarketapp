@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Sparkles, Store, Package, ShieldCheck } from 'lu
 import api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { DAYS_OF_WEEK } from '@/constants/days';
 
 /**
  * OnboardingWizard — optional, always-accessible guided setup at /onboarding.
@@ -151,7 +152,7 @@ export default function OnboardingWizard() {
               <li style={rowLi}><Package size={16} color="var(--stamp-red)" /> Add your first product</li>
               <li style={rowLi}><ShieldCheck size={16} color="var(--stamp-red)" /> Track a compliance item <span style={{ fontSize: 11, color: 'var(--charcoal-soft)' }}>(optional)</span></li>
             </ul>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <button className="btn ghost" onClick={() => navigate('/')} data-testid="wizard-exit">
                 <ArrowLeft size={14} /> Back to Dashboard
               </button>
@@ -175,7 +176,7 @@ export default function OnboardingWizard() {
                   <label htmlFor="wizard-market-day">Day of week</label>
                   <select id="wizard-market-day" value={market.day_of_week} onChange={(e) => setMarket({ ...market, day_of_week: e.target.value })} data-testid="wizard-market-day">
                     <option value="">Pick a day…</option>
-                    {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                    {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="field">
@@ -314,7 +315,7 @@ function WizardFooter({ onBack, onNext, busy, err, nextLabel = 'Save & continue'
   return (
     <>
       {err && <div className="banner danger" style={{ marginTop: 14 }} data-testid="wizard-error">{err}</div>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
         <button className="btn outline" onClick={onBack} disabled={busy} data-testid="wizard-back">
           <ArrowLeft size={14} /> Back
         </button>

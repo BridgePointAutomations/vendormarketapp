@@ -5,9 +5,10 @@ import SeasonPnlModal from '@/components/SeasonPnlModal';
 import { fmtDate } from '@/lib/format';
 import { Plus, Pencil, Trash2, Sparkles, MapPin, DollarSign, Copy } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { DAYS_OF_WEEK } from '@/constants/days';
+import { useMarketFit } from '@/hooks/useMarketFit';
 
 const empty = { name: '', address: '', day_of_week: 'Saturday', recurrence_pattern: 'weekly', season_start: '', season_end: '', category_focus: 'food', is_candidate: false, status: 'considering', default_booth_fee: '', _one_off_date: '' };
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function Markets() {
   const { vendor } = useAuth();
@@ -15,9 +16,7 @@ export default function Markets() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // null | {form, id?}
   const [saving, setSaving] = useState(false);
-  const [fitOpen, setFitOpen] = useState(null); // market id
-  const [fitData, setFitData] = useState({});
-  const [fitLoading, setFitLoading] = useState(false);
+  const { fits: fitData, busyId: fitBusyId, runFit: runFitSuggestion } = useMarketFit();
   const [pnlMarket, setPnlMarket] = useState(null); // {id, name}
 
   const load = async () => {
@@ -69,14 +68,7 @@ export default function Markets() {
 
   const runFit = async (m) => {
     if (vendor?.tier !== 'paid') return alert('Paid tier required for AI fit evaluation.');
-    setFitOpen(m.id);
-    setFitLoading(true);
-    try {
-      const { data } = await api.post('/ai/market-fit', { market_id: m.id });
-      setFitData({ [m.id]: data });
-    } catch (e) {
-      setFitData({ [m.id]: { error: e?.response?.data?.detail || 'AI request failed' } });
-    } finally { setFitLoading(false); }
+    await runFitSuggestion(m.id);
   };
 
   const [cloning, setCloning] = useState(false);
@@ -180,8 +172,8 @@ export default function Markets() {
                       {fitData[m.id]?.error && <div className="banner danger" style={{ marginTop: 8 }}>{fitData[m.id].error}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn outline tiny" onClick={() => runFit(m)} disabled={vendor?.tier !== 'paid' || fitLoading} data-testid={`fit-btn-${m.id}`}>
-                        <Sparkles size={12} /> {fitLoading && fitOpen === m.id ? 'Thinking…' : 'AI fit'}
+                      <button className="btn outline tiny" onClick={() => runFit(m)} disabled={vendor?.tier !== 'paid' || !!fitBusyId} data-testid={`fit-btn-${m.id}`}>
+                        <Sparkles size={12} /> {fitBusyId === m.id ? 'Thinking…' : 'AI fit'}
                       </button>
                       <button className="btn ghost tiny" onClick={() => openEdit(m)}><Pencil size={12} /></button>
                       <button className="btn ghost tiny" onClick={() => del(m)}><Trash2 size={12} /></button>
@@ -219,7 +211,7 @@ export default function Markets() {
             {modal.form.recurrence_pattern === 'weekly' ? (
               <div className="field"><label htmlFor="market-day-of-week">Day of week</label>
                 <select id="market-day-of-week" value={modal.form.day_of_week || 'Saturday'} onChange={e => setModal({ ...modal, form: { ...modal.form, day_of_week: e.target.value } })}>
-                  {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
             ) : (

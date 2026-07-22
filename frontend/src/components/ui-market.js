@@ -36,17 +36,19 @@ export const Empty = ({ title, children, testId }) => (
   </div>
 );
 
-export const Modal = ({ open, onClose, title, children, testId }) => {
+export const Modal = ({ open, onClose, title, children, testId, hideHeader = false, style }) => {
   useDialogA11y(open, onClose);
   if (!open) return null;
   const titleId = `${testId}-title`;
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()} data-testid={testId}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, marginTop: 4 }}>
-          <h3 id={titleId} className="display-md">{title}</h3>
-          <button onClick={onClose} className="btn ghost tiny" data-testid={`${testId}-close`}>Close</button>
-        </div>
+      <div className="modal" style={style} role="dialog" aria-modal="true" aria-labelledby={hideHeader ? undefined : titleId} onClick={(e) => e.stopPropagation()} data-testid={testId}>
+        {!hideHeader && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, marginTop: 4 }}>
+            <h3 id={titleId} className="display-md">{title}</h3>
+            <button onClick={onClose} className="btn ghost tiny" data-testid={`${testId}-close`}>Close</button>
+          </div>
+        )}
         {children}
       </div>
     </div>

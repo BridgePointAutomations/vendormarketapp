@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone
+import logging
+import os
 import uuid
 
 from db import db
@@ -15,6 +17,7 @@ from auth import hash_password, verify_password, issue_token, get_current_vendor
 from checklists import seed_getting_started_for_vendor
 
 router = APIRouter(prefix='/auth', tags=['auth'])
+logger = logging.getLogger(__name__)
 
 
 def _public(v: dict) -> dict:
@@ -67,8 +70,8 @@ async def signup(body: SignupRequest):
     # Seed getting-started checklist. Failure here shouldn't block signup.
     try:
         await seed_getting_started_for_vendor(vid)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception:
+        logger.exception('Failed to seed getting-started checklist for vendor %s', vid)
 
     token = issue_token(vid)
     return {'token': token, 'vendor': _public(doc)}
@@ -107,8 +110,16 @@ async def update_onboarding_flags(body: OnboardingFlagsUpdate, vendor=Depends(ge
     return _public(v)
 
 
+def _require_dev_tier_toggle() -> None:
+    """Dev-only tier toggle — no real billing is wired in. Gated off by default;
+    set ENABLE_DEV_TIER_TOGGLE=true in the environment to enable it."""
+    if os.environ.get('ENABLE_DEV_TIER_TOGGLE', '').lower() != 'true':
+        raise HTTPException(status_code=404, detail='Not found')
+
+
 @router.post('/me/upgrade', response_model=VendorPublic)
 async def upgrade(vendor=Depends(get_current_vendor)):
+    _require_dev_tier_toggle()
     await db.vendors.update_one({'id': vendor['id']}, {'$set': {'tier': 'paid'}})
     v = await db.vendors.find_one({'id': vendor['id']}, {'_id': 0})
     return _public(v)
@@ -116,6 +127,7 @@ async def upgrade(vendor=Depends(get_current_vendor)):
 
 @router.post('/me/downgrade', response_model=VendorPublic)
 async def downgrade(vendor=Depends(get_current_vendor)):
+    _require_dev_tier_toggle()
     await db.vendors.update_one({'id': vendor['id']}, {'$set': {'tier': 'free'}})
     v = await db.vendors.find_one({'id': vendor['id']}, {'_id': 0})
     return _public(v)

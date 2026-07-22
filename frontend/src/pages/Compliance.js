@@ -201,9 +201,9 @@ function ComplianceList({ items, onEdit, onDelete }) {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn ghost tiny" onClick={() => onEdit(c)}><Pencil size={12} /></button>
-              <button className="btn ghost tiny" onClick={() => onDelete(c)}><Trash2 size={12} /></button>
+            <div style={{ display: 'flex', gap: 14 }}>
+              <button className="btn ghost tiny" aria-label="Edit" onClick={() => onEdit(c)}><Pencil size={12} /></button>
+              <button className="btn ghost tiny" aria-label="Delete" onClick={() => onDelete(c)}><Trash2 size={12} /></button>
             </div>
           </div>
         );

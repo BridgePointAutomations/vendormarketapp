@@ -3,6 +3,8 @@ import api from '@/lib/api';
 import { SectionHead, Empty, StatBlock, AINote, StatusPill } from '@/components/ui-market';
 import { fmtCurrency, fmtDate, todayIso } from '@/lib/format';
 import { useAuth } from '@/lib/auth';
+import { useRestockSuggestion } from '@/hooks/useRestockSuggestion';
+import { useMarketFit } from '@/hooks/useMarketFit';
 import { Sparkles, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -10,11 +12,12 @@ export default function AIInsights() {
   const { vendor } = useAuth();
   const [markets, setMarkets] = useState([]);
   const [rollups, setRollups] = useState({}); // market_id -> rollup
-  const [restocks, setRestocks] = useState({}); // market_id -> {market_date, suggestions}
-  const [fits, setFits] = useState({}); // market_id -> data
+  const { getRestock, runRestock: runRestockSuggestion, isLoading: isRestockLoading } = useRestockSuggestion();
+  const { fits, busyId: fitBusyId, runFit: runFitSuggestion } = useMarketFit();
   const [selectedMarket, setSelectedMarket] = useState('');
   const [restockDate, setRestockDate] = useState(todayIso());
-  const [busy, setBusy] = useState('');
+  const restockBusy = isRestockLoading(selectedMarket, restockDate);
+  const selectedRestock = getRestock(selectedMarket, restockDate);
 
   useEffect(() => {
     (async () => {
@@ -41,23 +44,15 @@ export default function AIInsights() {
 
   const runRestock = async () => {
     if (!selectedMarket) return;
-    setBusy('restock');
     try {
-      const { data } = await api.post('/ai/restock', { market_id: selectedMarket, market_date: restockDate });
-      setRestocks(prev => ({ ...prev, [selectedMarket]: data }));
+      await runRestockSuggestion(selectedMarket, restockDate);
     } catch (e) {
       alert(e?.response?.data?.detail || 'AI restock failed');
-    } finally { setBusy(''); }
+    }
   };
 
   const runFit = async (mid) => {
-    setBusy(`fit-${mid}`);
-    try {
-      const { data } = await api.post('/ai/market-fit', { market_id: mid });
-      setFits(prev => ({ ...prev, [mid]: data }));
-    } catch (e) {
-      setFits(prev => ({ ...prev, [mid]: { error: e?.response?.data?.detail || 'AI request failed' } }));
-    } finally { setBusy(''); }
+    await runFitSuggestion(mid);
   };
 
   const enrolled = markets.filter(m => !m.is_candidate);
@@ -155,24 +150,24 @@ export default function AIInsights() {
             <label htmlFor="insights-restock-date">Date</label>
             <input id="insights-restock-date" type="date" value={restockDate} onChange={e => setRestockDate(e.target.value)} data-testid="insights-restock-date" />
           </div>
-          <button className="btn primary" onClick={runRestock} disabled={busy === 'restock' || !selectedMarket} data-testid="insights-restock-btn">
-            <Sparkles size={13} /> {busy === 'restock' ? 'Thinking…' : 'Generate'}
+          <button className="btn primary" onClick={runRestock} disabled={restockBusy || !selectedMarket} data-testid="insights-restock-btn">
+            <Sparkles size={13} /> {restockBusy ? 'Thinking…' : 'Generate'}
           </button>
         </div>
 
-        {restocks[selectedMarket] && restocks[selectedMarket].insufficient_history && (
+        {selectedRestock && selectedRestock.insufficient_history && (
           <div className="ai-note-block" style={{ marginTop: 16, borderColor: '#d4b64a', background: '#fdf7e6' }} data-testid="insights-restock-insufficient">
             <div className="display-xs text-muted" style={{ marginBottom: 4 }}>Not enough history yet</div>
-            <div className="ai-note">{restocks[selectedMarket].message}</div>
+            <div className="ai-note">{selectedRestock.message}</div>
           </div>
         )}
-        {restocks[selectedMarket] && !restocks[selectedMarket].insufficient_history && (
+        {selectedRestock && !selectedRestock.insufficient_history && (
           <div className="ai-note-block" style={{ marginTop: 16 }}>
             <div className="display-xs text-muted" style={{ marginBottom: 4 }}>
-              Suggested for {fmtDate(restocks[selectedMarket].market_date)}{restocks[selectedMarket].cached ? ' · cached' : ''}
+              Suggested for {fmtDate(selectedRestock.market_date)}{selectedRestock.cached ? ' · cached' : ''}
             </div>
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-              {restocks[selectedMarket].suggestions.map(s => (
+              {selectedRestock.suggestions.map(s => (
                 <li key={s.product_id} className="ai-note" style={{ marginBottom: 3 }}>
                   • Bring {s.suggested_qty} — {s.rationale}
                 </li>
@@ -211,8 +206,8 @@ export default function AIInsights() {
                     <div className="ai-note">{f.reason}</div>
                   </div>
                 )}
-                <button className="btn outline tiny" style={{ marginTop: 12 }} onClick={() => runFit(m.id)} disabled={busy === `fit-${m.id}`} data-testid={`insights-fit-btn-${m.id}`}>
-                  <Sparkles size={12} /> {busy === `fit-${m.id}` ? 'Thinking…' : (f ? 'Regenerate' : 'Get fit')}
+                <button className="btn outline tiny" style={{ marginTop: 12 }} onClick={() => runFit(m.id)} disabled={fitBusyId === m.id} data-testid={`insights-fit-btn-${m.id}`}>
+                  <Sparkles size={12} /> {fitBusyId === m.id ? 'Thinking…' : (f ? 'Regenerate' : 'Get fit')}
                 </button>
               </div>
             );

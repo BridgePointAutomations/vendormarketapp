@@ -4,6 +4,7 @@ import { SectionHead, Empty, AINote } from '@/components/ui-market';
 import { fmtCurrency, fmtDate, todayIso } from '@/lib/format';
 import { nextWeekdayOccurrence } from '@/lib/recurrence';
 import { useAuth } from '@/lib/auth';
+import { useRestockSuggestion } from '@/hooks/useRestockSuggestion';
 import { Sparkles, RefreshCw, Trash2, DollarSign } from 'lucide-react';
 
 export default function Allocate() {
@@ -17,8 +18,9 @@ export default function Allocate() {
   const [saving, setSaving] = useState(false);
   const [revenue, setRevenue] = useState(null);
   const [revenueLoading, setRevenueLoading] = useState(false);
-  const [restock, setRestock] = useState(null);
-  const [restockLoading, setRestockLoading] = useState(false);
+  const { getRestock, runRestock: runRestockSuggestion, isLoading: isRestockLoading } = useRestockSuggestion();
+  const restock = getRestock(marketId, marketDate);
+  const restockLoading = isRestockLoading(marketId, marketDate);
   const [pnl, setPnl] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
   const [boothFeeInput, setBoothFeeInput] = useState('');
@@ -49,8 +51,7 @@ export default function Allocate() {
     if (!marketId || !marketDate) return;
     const { data } = await api.get('/allocations', { params: { market_id: marketId, market_date: marketDate } });
     setAllocs(data);
-    // clear AI outputs when context changes
-    setRestock(null);
+    // clear AI revenue projection when context changes (restock is keyed per market+date already)
     setRevenue(null);
   };
   useEffect(() => { loadAllocs(); }, [marketId, marketDate]);
@@ -110,13 +111,11 @@ export default function Allocate() {
 
   const runRestock = async () => {
     if (vendor?.tier !== 'paid') return alert('Paid tier required for AI restock.');
-    setRestockLoading(true);
     try {
-      const { data } = await api.post('/ai/restock', { market_id: marketId, market_date: marketDate });
-      setRestock(data);
+      await runRestockSuggestion(marketId, marketDate);
     } catch (e) {
       alert(e?.response?.data?.detail || 'AI restock failed');
-    } finally { setRestockLoading(false); }
+    }
   };
 
   const applyRestock = async () => {

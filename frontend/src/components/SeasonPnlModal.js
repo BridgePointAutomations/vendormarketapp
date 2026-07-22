@@ -3,6 +3,7 @@ import { X, TrendingUp, TrendingDown, Minus, Download, Printer } from 'lucide-re
 import api from '@/lib/api';
 import { fmtCurrency, fmtDate } from '@/lib/format';
 import { downloadCsv } from '@/lib/download';
+import { Modal } from '@/components/ui-market';
 
 /**
  * SeasonPnlModal — read-only view of estimated season P&L for a single market.
@@ -36,8 +37,7 @@ export default function SeasonPnlModal({ marketId, marketName, onClose }) {
   const trendIcon = net > 0 ? <TrendingUp size={14} color="var(--crate-green)" /> : net < 0 ? <TrendingDown size={14} color="var(--stamp-red)" /> : <Minus size={14} color="var(--charcoal-soft)" />;
 
   return (
-    <div className="modal-overlay" onClick={onClose} data-testid="season-pnl-overlay">
-      <div className="modal" style={{ maxWidth: 720 }} onClick={(e) => e.stopPropagation()} data-testid="season-pnl-modal">
+    <Modal open onClose={onClose} testId="season-pnl-modal" hideHeader style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
             <div className="display-xs text-muted">Season P&amp;L</div>
@@ -104,8 +104,8 @@ export default function SeasonPnlModal({ marketId, marketName, onClose }) {
                 <div style={{ fontSize: 13 }}>Allocate products to a market date on the Allocate page to start tracking P&amp;L.</div>
               </div>
             ) : (
-              <div className="canvas-surface" style={{ padding: 0, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }} data-testid="season-pnl-table">
+              <div className="canvas-surface" style={{ padding: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 13 }} data-testid="season-pnl-table">
                   <thead>
                     <tr style={{ borderBottom: '1px dashed var(--line-dashed)' }}>
                       <Th>Date</Th>
@@ -142,8 +142,7 @@ export default function SeasonPnlModal({ marketId, marketName, onClose }) {
             )}
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
 

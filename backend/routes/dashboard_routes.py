@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends
 from datetime import date, timedelta
+import logging
 
 from db import db
 from auth import get_current_vendor
 from utils import compute_compliance_status as _compute_status
 
 router = APIRouter(prefix='/dashboard', tags=['dashboard'])
+logger = logging.getLogger(__name__)
 
 
 @router.get('')
@@ -27,6 +29,7 @@ async def dashboard(vendor=Depends(get_current_vendor)):
             if today <= d <= week_end:
                 upcoming_allocs.append(a)
         except Exception:
+            logger.warning('Skipping unparseable market_date %r for vendor %s', a.get('market_date'), vid)
             continue
 
     # market_days upcoming — preferred source for "next date" (mirrors checklists_routes.packing_next_day),
@@ -96,6 +99,7 @@ async def dashboard(vendor=Depends(get_current_vendor)):
             if today <= d <= week_end:
                 week_revenue += r.get('projected_revenue', 0) or 0
         except Exception:
+            logger.warning('Skipping unparseable market_date %r for vendor %s', r.get('market_date'), vid)
             continue
 
     # reminders (unread — sent in last 30 days)

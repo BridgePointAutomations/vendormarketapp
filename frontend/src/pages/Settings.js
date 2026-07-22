@@ -5,15 +5,9 @@ import api from '@/lib/api';
 import { SectionHead } from '@/components/ui-market';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { Sparkles, Check, PlayCircle, Store, RotateCcw } from 'lucide-react';
+import { MARKET_TYPE_OPTIONS } from '@/constants/marketTypes';
 
-const MARKET_TYPE_OPTIONS = [
-  { value: '', label: 'Not specified' },
-  { value: 'farmers', label: "Farmers' Market" },
-  { value: 'flea', label: 'Flea Market' },
-  { value: 'popup', label: 'Pop-up / Event' },
-  { value: 'craft', label: 'Craft Fair' },
-  { value: 'mixed', label: 'A little of everything' },
-];
+const DEV_TIER_TOGGLE_ENABLED = process.env.REACT_APP_ENABLE_DEV_TIER_TOGGLE === 'true';
 
 export default function SettingsPage() {
   const { vendor, upgrade, downgrade, setVendor, updateOnboarding } = useAuth();
@@ -183,12 +177,22 @@ export default function SettingsPage() {
                 ))}
               </ul>
             </div>
-            <button className={`btn ${vendor?.tier === 'paid' ? 'outline' : 'primary'}`} onClick={flip} disabled={tierBusy} style={{ width: '100%' }} data-testid="tier-toggle">
-              {tierBusy ? '…' : vendor?.tier === 'paid' ? 'Downgrade to free' : (<><Sparkles size={13} /> Upgrade to paid</>)}
-            </button>
-            <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: 10, textAlign: 'center' }}>
-              Dev toggle — Stripe billing not wired in v1
-            </div>
+            {DEV_TIER_TOGGLE_ENABLED ? (
+              <>
+                <button className={`btn ${vendor?.tier === 'paid' ? 'outline' : 'primary'}`} onClick={flip} disabled={tierBusy} style={{ width: '100%' }} data-testid="tier-toggle">
+                  {tierBusy ? '…' : vendor?.tier === 'paid' ? 'Downgrade to free' : (<><Sparkles size={13} /> Upgrade to paid</>)}
+                </button>
+                <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: 10, textAlign: 'center' }}>
+                  Dev toggle — Stripe billing not wired in v1
+                </div>
+              </>
+            ) : (
+              vendor?.tier !== 'paid' && (
+                <div style={{ fontSize: 12, color: 'var(--charcoal-soft)', textAlign: 'center' }}>
+                  Billing isn't available yet — check back soon.
+                </div>
+              )
+            )}
           </div>
 
           <div className="canvas-surface" style={{ padding: 22 }} data-testid="settings-onboarding-panel">

@@ -1,6 +1,6 @@
 """Shared helpers used across routes."""
 from datetime import date, datetime, timedelta, timezone
-from typing import Iterable, Dict, Any
+from typing import Iterable, Dict, Any, Optional
 import uuid
 
 EXPIRING_WINDOW_DAYS = 30
@@ -71,6 +71,63 @@ def strip_mongo(doc: dict) -> dict:
     if isinstance(doc, dict):
         doc.pop("_id", None)
     return doc
+
+
+def pick_booth_fee(market_day: Optional[dict], default_fee) -> Optional[float]:
+    """Priority: market_day.booth_fee override > default_fee > None.
+
+    Pure/no-DB-call variant of `resolve_booth_fee`, for call sites that already
+    bulk-preload `market_days` rows and just need the priority branch applied.
+    """
+    if market_day is not None and market_day.get('booth_fee') is not None:
+        return float(market_day['booth_fee'])
+    if default_fee is not None:
+        return float(default_fee)
+    return None
+
+
+async def resolve_booth_fee(db, vendor_id: str, market_id: str, market_date: str, market: Optional[dict] = None) -> Optional[float]:
+    """Booth fee priority: market_days override > market.default_booth_fee > None.
+
+    Accepts an optional pre-fetched `market` dict to avoid a redundant query
+    when the caller already loaded it.
+    """
+    md = await db.market_days.find_one({
+        'vendor_id': vendor_id, 'market_id': market_id, 'market_date': market_date,
+    }, {'_id': 0})
+    if market is None:
+        market = await db.markets.find_one({'id': market_id, 'vendor_id': vendor_id}, {'_id': 0})
+    default_fee = market.get('default_booth_fee') if market else None
+    return pick_booth_fee(md, default_fee)
+
+
+async def resolve_next_market_date(db, vendor_id: str, today_iso: Optional[str] = None) -> Optional[dict]:
+    """Return the vendor's single next upcoming (market_id, market_date), or None.
+
+    Resolution order:
+    1. Nearest future (>= today) date from `market_days` records.
+    2. Fall back to nearest future date from allocations.
+    """
+    today_iso = today_iso or date.today().isoformat()
+    md = await db.market_days.find_one(
+        {'vendor_id': vendor_id, 'market_date': {'$gte': today_iso}},
+        {'_id': 0}, sort=[('market_date', 1)],
+    )
+    if md:
+        return {'market_id': md['market_id'], 'market_date': md['market_date']}
+    alloc = await db.allocations.find_one(
+        {'vendor_id': vendor_id, 'market_date': {'$gte': today_iso}},
+        {'_id': 0}, sort=[('market_date', 1)],
+    )
+    if alloc:
+        return {'market_id': alloc['market_id'], 'market_date': alloc['market_date']}
+    return None
+
+
+def safe_csv_filename(name: str, prefix: str, suffix: str = '.csv') -> str:
+    """Sanitize a name for use in a Content-Disposition filename."""
+    safe_name = ''.join(c if c.isalnum() or c in '-_ ' else '_' for c in (name or '')).strip().replace(' ', '_')
+    return f"{prefix}{safe_name}{suffix}"
 
 
 def units_sold_for(allocation: Dict[str, Any]) -> float:

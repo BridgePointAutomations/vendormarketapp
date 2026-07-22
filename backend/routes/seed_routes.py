@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timezone, date, timedelta
+import os
 import uuid
 
 from db import db
@@ -21,7 +22,15 @@ def _u() -> str:
 
 @router.post('/demo')
 async def seed_demo():
-    """Idempotent: rebuild demo vendor and full dataset every call."""
+    """Idempotent: rebuild demo vendor and full dataset every call.
+
+    Gated off by default — this is a public, unauthenticated endpoint that
+    mutates the database and returns a live JWT. Set ENABLE_DEMO_SEED=true
+    in the environment to enable it (e.g. for a demo/staging deployment).
+    """
+    if os.environ.get('ENABLE_DEMO_SEED', '').lower() != 'true':
+        raise HTTPException(status_code=404, detail='Not found')
+
     existing = await db.vendors.find_one({'email': DEMO_EMAIL})
     if existing:
         vid = existing['id']

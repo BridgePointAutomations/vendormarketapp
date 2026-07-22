@@ -9,6 +9,7 @@ from db import db
 from models import AIRestockRequest, AIMarketFitRequest, AIRevenueRequest
 from auth import require_paid
 from ai_client import ask_claude
+from utils import resolve_booth_fee
 
 router = APIRouter(prefix='/ai', tags=['ai'])
 
@@ -23,18 +24,6 @@ async def _load_market(vendor_id: str, market_id: str):
     if not m:
         raise HTTPException(404, 'Market not found')
     return m
-
-
-async def _resolve_booth_fee(vendor_id: str, market_id: str, market_date: str, market: dict) -> Optional[float]:
-    """booth fee priority: market_days override > market.default_booth_fee > None."""
-    md = await db.market_days.find_one({
-        'vendor_id': vendor_id, 'market_id': market_id, 'market_date': market_date,
-    }, {'_id': 0})
-    if md is not None and md.get('booth_fee') is not None:
-        return float(md['booth_fee'])
-    if market.get('default_booth_fee') is not None:
-        return float(market['default_booth_fee'])
-    return None
 
 
 async def _history_fingerprint(vendor_id: str, market_id: str) -> str:
@@ -252,7 +241,7 @@ async def revenue(body: AIRevenueRequest, vendor=Depends(require_paid)):
     }, {'_id': 0}).sort('market_date', -1).to_list(60)
 
     distinct_dates = _distinct_dates(history)
-    booth_fee = await _resolve_booth_fee(vendor['id'], body.market_id, body.market_date, market) or 0.0
+    booth_fee = await resolve_booth_fee(db, vendor['id'], body.market_id, body.market_date, market) or 0.0
 
     # sell-through per product across all history
     sell_through: dict = {}

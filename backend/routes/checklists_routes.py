@@ -7,7 +7,7 @@ import io
 
 from db import db
 from auth import get_current_vendor
-from utils import uid, iso_now
+from utils import uid, iso_now, safe_csv_filename, resolve_next_market_date
 from checklists import (
     seed_getting_started_for_vendor,
     seed_packing_for_market,
@@ -143,11 +143,8 @@ async def export_packing(
         writer.writerow([checked, it.get('label', ''), it.get('hint', '') or ''])
 
     csv_data = buf.getvalue()
-    safe_name = ''.join(c if c.isalnum() or c in '-_ ' else '_' for c in (market.get('name') or 'market')).strip().replace(' ', '_')
-    filename = f"marketops_packing_{safe_name}"
-    if market_date:
-        filename += f"_{market_date}"
-    filename += '.csv'
+    suffix = (f"_{market_date}" if market_date else '') + '.csv'
+    filename = safe_csv_filename(market.get('name') or 'market', 'marketops_packing_', suffix)
     return StreamingResponse(
         iter([csv_data]),
         media_type='text/csv',
@@ -256,26 +253,11 @@ async def packing_next_day(vendor=Depends(get_current_vendor)):
     2. Fall back to nearest future date from allocations.
     3. Otherwise None.
     """
-    today = _today_iso()
-    md = await db.market_days.find_one(
-        {'vendor_id': vendor['id'], 'market_date': {'$gte': today}},
-        {'_id': 0}, sort=[('market_date', 1)],
-    )
-    market_id = None
-    market_date = None
-    if md:
-        market_id = md['market_id']
-        market_date = md['market_date']
-    else:
-        alloc = await db.allocations.find_one(
-            {'vendor_id': vendor['id'], 'market_date': {'$gte': today}},
-            {'_id': 0}, sort=[('market_date', 1)],
-        )
-        if alloc:
-            market_id = alloc['market_id']
-            market_date = alloc['market_date']
-    if not market_id or not market_date:
+    next_market = await resolve_next_market_date(db, vendor['id'], _today_iso())
+    if not next_market:
         return {'has_upcoming': False}
+    market_id = next_market['market_id']
+    market_date = next_market['market_date']
 
     market = await db.markets.find_one({'id': market_id, 'vendor_id': vendor['id']}, {'_id': 0})
     checklist = await seed_packing_for_market(vendor['id'], market_id)

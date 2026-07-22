@@ -1,15 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { ArrowLeft, ArrowRight, Sprout, Tent, Sparkles, Palette, Layers } from 'lucide-react';
-
-const MARKET_TYPES = [
-  { value: 'farmers', label: "Farmers' Market", icon: Sprout, hint: 'Produce, food, weekly' },
-  { value: 'flea', label: 'Flea Market', icon: Layers, hint: 'Mixed goods, resale' },
-  { value: 'popup', label: 'Pop-up / Event', icon: Sparkles, hint: 'One-off or seasonal' },
-  { value: 'craft', label: 'Craft Fair', icon: Palette, hint: 'Handmade, artisan' },
-  { value: 'mixed', label: 'A little of everything', icon: Tent, hint: 'Multiple formats' },
-];
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { MARKET_TYPES } from '@/constants/marketTypes';
 
 export default function Signup() {
   const { signup } = useAuth();

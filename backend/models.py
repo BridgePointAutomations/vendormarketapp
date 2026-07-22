@@ -193,11 +193,6 @@ class MarketDayCreate(BaseModel):
     notes: Optional[str] = None
 
 
-class MarketDayUpdate(BaseModel):
-    booth_fee: Optional[float] = None
-    notes: Optional[str] = None
-
-
 class MarketDay(BaseModel):
     model_config = ConfigDict(extra='ignore')
     id: str
