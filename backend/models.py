@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator
 from typing import Optional, Literal, List, Dict, Any
 from datetime import datetime, timezone
 import uuid
@@ -79,20 +79,20 @@ class ProductCreate(BaseModel):
     name: str
     sku: Optional[str] = None
     unit: Optional[str] = None  # loaf, jar, piece
-    unit_price: float = 0
-    unit_cost: Optional[float] = None  # estimated COGS per unit (optional)
-    current_stock: float = 0
-    low_stock_threshold: float = 0
+    unit_price: float = Field(0, ge=0)
+    unit_cost: Optional[float] = Field(default=None, ge=0)  # estimated COGS per unit (optional)
+    current_stock: float = Field(0, ge=0)
+    low_stock_threshold: float = Field(0, ge=0)
 
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     sku: Optional[str] = None
     unit: Optional[str] = None
-    unit_price: Optional[float] = None
-    unit_cost: Optional[float] = None
-    current_stock: Optional[float] = None
-    low_stock_threshold: Optional[float] = None
+    unit_price: Optional[float] = Field(default=None, ge=0)
+    unit_cost: Optional[float] = Field(default=None, ge=0)
+    low_stock_threshold: Optional[float] = Field(default=None, ge=0)
+    # current_stock is intentionally not editable here — use POST /products/{id}/stock-adjustment
 
 
 class Product(BaseModel):
@@ -102,10 +102,41 @@ class Product(BaseModel):
     name: str
     sku: Optional[str] = None
     unit: Optional[str] = None
-    unit_price: float = 0
+    unit_price: float = Field(0, ge=0)
     unit_cost: Optional[float] = None
-    current_stock: float = 0
-    low_stock_threshold: float = 0
+    current_stock: float = Field(0, ge=0)
+    low_stock_threshold: float = Field(0, ge=0)
+    created_at: str
+
+
+# ---------- Stock adjustments / audit ----------
+StockChangeReason = Literal['restock', 'recount', 'sale', 'sale_reversal']
+
+
+class StockAdjustment(BaseModel):
+    mode: Literal['add', 'set']  # add: delta restock; set: absolute recount
+    quantity: float
+    reason: Optional[str] = None
+
+    @model_validator(mode='after')
+    def _check_quantity(self):
+        if self.mode == 'add' and self.quantity <= 0:
+            raise ValueError('quantity must be > 0 when mode is "add"')
+        if self.mode == 'set' and self.quantity < 0:
+            raise ValueError('quantity must be >= 0 when mode is "set"')
+        return self
+
+
+class StockEvent(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    id: str
+    vendor_id: str
+    product_id: str
+    change: float  # signed delta actually applied
+    resulting_stock: Optional[float] = None
+    reason: StockChangeReason
+    note: Optional[str] = None
+    allocation_id: Optional[str] = None
     created_at: str
 
 
@@ -160,16 +191,16 @@ class Market(BaseModel):
 class AllocationCreate(BaseModel):
     market_id: str
     product_id: str
-    allocated_qty: float
+    allocated_qty: float = Field(ge=0)
     market_date: str  # ISO date
-    remaining_qty: Optional[float] = None
-    actual_units_sold: Optional[float] = None
+    remaining_qty: Optional[float] = Field(default=None, ge=0)
+    actual_units_sold: Optional[float] = Field(default=None, ge=0)
 
 
 class AllocationUpdate(BaseModel):
-    allocated_qty: Optional[float] = None
-    remaining_qty: Optional[float] = None
-    actual_units_sold: Optional[float] = None
+    allocated_qty: Optional[float] = Field(default=None, ge=0)
+    remaining_qty: Optional[float] = Field(default=None, ge=0)
+    actual_units_sold: Optional[float] = Field(default=None, ge=0)
 
 
 class Allocation(BaseModel):

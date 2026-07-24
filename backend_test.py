@@ -267,7 +267,7 @@ class MarketOpsAPITester:
             product_id = response['id']
             self.product_ids.append(product_id)
             
-            # Update product
+            # Update product (current_stock is no longer editable via PATCH)
             success2, response2 = self.run_test(
                 "Update Product",
                 "PATCH",
@@ -278,8 +278,8 @@ class MarketOpsAPITester:
                     "current_stock": 60
                 }
             )
-            
-            if success2 and response2.get('unit_price') == 12.0:
+
+            if success2 and response2.get('unit_price') == 12.0 and response2.get('current_stock') == 50:
                 # Delete product
                 success3, _ = self.run_test(
                     "Delete Product",
@@ -288,8 +288,223 @@ class MarketOpsAPITester:
                     200
                 )
                 return success3
-        
+
         return False
+
+    def test_product_validation(self):
+        """Negative numeric fields are rejected; duplicate SKUs per vendor are rejected."""
+        print("\n🔧 Testing Product Validation...")
+
+        self.run_test(
+            "Reject Negative Stock",
+            "POST", "products", 422,
+            data={"name": "Bad Stock", "current_stock": -5}
+        )
+        self.run_test(
+            "Reject Negative Threshold",
+            "POST", "products", 422,
+            data={"name": "Bad Threshold", "low_stock_threshold": -1}
+        )
+        self.run_test(
+            "Reject Negative Price",
+            "POST", "products", 422,
+            data={"name": "Bad Price", "unit_price": -1}
+        )
+
+        success, response = self.run_test(
+            "Create Product With SKU",
+            "POST", "products", 200,
+            data={"name": "SKU Product 1", "sku": "DUP-1", "current_stock": 0}
+        )
+        if success and 'id' in response:
+            self.product_ids.append(response['id'])
+
+        success2, _ = self.run_test(
+            "Reject Duplicate SKU",
+            "POST", "products", 400,
+            data={"name": "SKU Product 2", "sku": "DUP-1", "current_stock": 0}
+        )
+        return success and success2
+
+    def test_stock_adjustment(self):
+        """Manual restock (add) and recount (set) via the stock-adjustment endpoint."""
+        print("\n🔧 Testing Stock Adjustment...")
+
+        success, response = self.run_test(
+            "Create Product For Adjustment",
+            "POST", "products", 200,
+            data={"name": "Adjustable Product", "current_stock": 10}
+        )
+        if not (success and 'id' in response):
+            return False
+        product_id = response['id']
+        self.product_ids.append(product_id)
+
+        success2, response2 = self.run_test(
+            "Add Stock",
+            "POST", f"products/{product_id}/stock-adjustment", 200,
+            data={"mode": "add", "quantity": 5}
+        )
+        add_ok = success2 and response2.get('current_stock') == 15
+
+        success3, response3 = self.run_test(
+            "Recount Stock",
+            "POST", f"products/{product_id}/stock-adjustment", 200,
+            data={"mode": "set", "quantity": 7}
+        )
+        set_ok = success3 and response3.get('current_stock') == 7
+
+        success4, _ = self.run_test(
+            "Reject Zero-Quantity Add",
+            "POST", f"products/{product_id}/stock-adjustment", 422,
+            data={"mode": "add", "quantity": 0}
+        )
+
+        return add_ok and set_ok and success4
+
+    def test_stock_allocation_sync(self):
+        """current_stock stays in sync with actual_units_sold on allocations."""
+        print("\n🔧 Testing Stock/Allocation Sync...")
+
+        _, markets = self.run_test("Get Markets for Sync Test", "GET", "markets", 200)
+        if not markets:
+            self.log_result("Stock Allocation Sync", False, "No markets available")
+            return False
+        market_id = markets[0]['id']
+        test_date = str(date.today() + timedelta(days=20))
+
+        success, response = self.run_test(
+            "Create Product For Sync",
+            "POST", "products", 200,
+            data={"name": "Sync Product", "current_stock": 20}
+        )
+        if not (success and 'id' in response):
+            return False
+        product_id = response['id']
+        self.product_ids.append(product_id)
+
+        # Sale on create: 20 -> 15
+        success2, response2 = self.run_test(
+            "Create Allocation With Sale",
+            "POST", "allocations", 200,
+            data={
+                "market_id": market_id, "product_id": product_id,
+                "allocated_qty": 20, "market_date": test_date, "actual_units_sold": 5,
+            }
+        )
+        if not (success2 and 'id' in response2):
+            return False
+        allocation_id = response2['id']
+        self.allocation_ids.append(allocation_id)
+
+        _, prod = self.run_test("Check Stock After Create", "GET", f"products", 200)
+        stock_after_create = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        create_ok = stock_after_create == 15
+
+        # Increase sold 5 -> 8: incremental -3 -> 12
+        self.run_test(
+            "Increase Sold",
+            "PATCH", f"allocations/{allocation_id}", 200,
+            data={"actual_units_sold": 8}
+        )
+        _, prod = self.run_test("Check Stock After Increase", "GET", f"products", 200)
+        stock_after_increase = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        increase_ok = stock_after_increase == 12
+
+        # Decrease sold 8 -> 3: credit back 5 -> 17
+        self.run_test(
+            "Decrease Sold",
+            "PATCH", f"allocations/{allocation_id}", 200,
+            data={"actual_units_sold": 3}
+        )
+        _, prod = self.run_test("Check Stock After Decrease", "GET", f"products", 200)
+        stock_after_decrease = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        decrease_ok = stock_after_decrease == 17
+
+        # Clear sold entirely (null): credit back remaining 3 -> 20
+        self.run_test(
+            "Clear Sold",
+            "PATCH", f"allocations/{allocation_id}", 200,
+            data={"actual_units_sold": None}
+        )
+        _, prod = self.run_test("Check Stock After Clear", "GET", f"products", 200)
+        stock_after_clear = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        clear_ok = stock_after_clear == 20
+
+        # Re-record a sale then delete the allocation: reversed back to 20
+        self.run_test(
+            "Re-record Sale Before Delete",
+            "PATCH", f"allocations/{allocation_id}", 200,
+            data={"actual_units_sold": 4}
+        )
+        self.run_test(
+            "Delete Allocation With Sale",
+            "DELETE", f"allocations/{allocation_id}", 200
+        )
+        self.allocation_ids.remove(allocation_id)
+        _, prod = self.run_test("Check Stock After Delete", "GET", f"products", 200)
+        stock_after_delete = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        delete_ok = stock_after_delete == 20
+
+        # Oversell clamps at 0 rather than going negative
+        success5, response5 = self.run_test(
+            "Create Allocation Oversell",
+            "POST", "allocations", 200,
+            data={
+                "market_id": market_id, "product_id": product_id,
+                "allocated_qty": 50, "market_date": str(date.today() + timedelta(days=21)),
+                "actual_units_sold": 50,
+            }
+        )
+        if success5 and 'id' in response5:
+            self.allocation_ids.append(response5['id'])
+        _, prod = self.run_test("Check Stock After Oversell", "GET", f"products", 200)
+        stock_after_oversell = next((p['current_stock'] for p in prod if p['id'] == product_id), None)
+        oversell_ok = stock_after_oversell == 0
+
+        return create_ok and increase_ok and decrease_ok and clear_ok and delete_ok and oversell_ok
+
+    def test_low_stock_consistency(self):
+        """The Products list and the Dashboard warnings agree on low-stock at the threshold boundary."""
+        print("\n🔧 Testing Low-Stock Consistency...")
+
+        _, markets = self.run_test("Get Markets for Low Stock Test", "GET", "markets", 200)
+        if not markets:
+            self.log_result("Low Stock Consistency", False, "No markets available")
+            return False
+        market_id = markets[0]['id']
+        test_date = str(date.today() + timedelta(days=22))
+
+        success, response = self.run_test(
+            "Create Product At Threshold",
+            "POST", "products", 200,
+            data={"name": "Threshold Product", "current_stock": 5, "low_stock_threshold": 5}
+        )
+        if not (success and 'id' in response):
+            return False
+        product_id = response['id']
+        self.product_ids.append(product_id)
+
+        success2, response2 = self.run_test(
+            "Allocate Threshold Product",
+            "POST", "allocations", 200,
+            data={"market_id": market_id, "product_id": product_id, "allocated_qty": 5, "market_date": test_date}
+        )
+        if success2 and 'id' in response2:
+            self.allocation_ids.append(response2['id'])
+
+        _, prod = self.run_test("List Products For Threshold Check", "GET", "products", 200)
+        product_flagged = next((p for p in prod if p['id'] == product_id), None)
+        products_low = product_flagged is not None and product_flagged['current_stock'] <= product_flagged['low_stock_threshold']
+
+        _, dash = self.run_test("Dashboard For Threshold Check", "GET", "dashboard", 200)
+        dashboard_low = False
+        for card in dash.get('market_cards', []):
+            for w in card.get('warnings', []):
+                if w.get('product_id') == product_id:
+                    dashboard_low = True
+
+        return products_low and dashboard_low
 
     # ========== MARKETS TESTS ==========
     def test_markets_crud(self):
@@ -836,6 +1051,10 @@ def main():
         
         # 3. CRUD tests
         tester.test_products_crud()
+        tester.test_product_validation()
+        tester.test_stock_adjustment()
+        tester.test_stock_allocation_sync()
+        tester.test_low_stock_consistency()
         tester.test_markets_crud()
         tester.test_allocations_crud()
         tester.test_compliance_crud()

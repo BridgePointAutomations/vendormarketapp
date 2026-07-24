@@ -62,11 +62,11 @@ async def dashboard(vendor=Depends(get_current_vendor)):
         warnings = []
         for a in m_allocs:
             p = product_map.get(a['product_id'])
-            if p and a.get('allocated_qty', 0) < (p.get('low_stock_threshold') or 0):
+            if p and (p.get('current_stock') or 0) <= (p.get('low_stock_threshold') or 0):
                 warnings.append({
                     'product_id': p['id'],
                     'name': p['name'],
-                    'allocated_qty': a['allocated_qty'],
+                    'current_stock': p.get('current_stock') or 0,
                     'threshold': p['low_stock_threshold'],
                 })
         # next date for this market — prefer scheduled market_days, fall back to allocations

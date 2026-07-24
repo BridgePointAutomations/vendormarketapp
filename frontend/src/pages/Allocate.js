@@ -5,6 +5,7 @@ import { fmtCurrency, fmtDate, todayIso } from '@/lib/format';
 import { nextWeekdayOccurrence } from '@/lib/recurrence';
 import { useAuth } from '@/lib/auth';
 import { useRestockSuggestion } from '@/hooks/useRestockSuggestion';
+import { isLowStock } from '@/lib/inventory';
 import { Sparkles, RefreshCw, Trash2, DollarSign } from 'lucide-react';
 
 export default function Allocate() {
@@ -24,6 +25,11 @@ export default function Allocate() {
   const [pnl, setPnl] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
   const [boothFeeInput, setBoothFeeInput] = useState('');
+
+  const loadProducts = async () => {
+    const { data } = await api.get('/products');
+    setProducts(data);
+  };
 
   useEffect(() => {
     (async () => {
@@ -101,11 +107,16 @@ export default function Allocate() {
         });
       }
       await loadAllocs();
+      if (Object.prototype.hasOwnProperty.call(patch, 'actual_units_sold')) {
+        await loadProducts(); // stock may have synced from a recorded sale
+      }
     } finally { setSaving(false); }
   };
 
   const removeAlloc = async (id) => {
+    const hadSale = !!allocs.find(a => a.id === id)?.actual_units_sold;
     await api.delete(`/allocations/${id}`);
+    if (hadSale) await loadProducts(); // stock may have been reversed
     loadAllocs();
   };
 
@@ -326,8 +337,9 @@ export default function Allocate() {
                 const a = allocByProd[p.id];
                 const allocated = a?.allocated_qty ?? 0;
                 const remaining = a?.remaining_qty ?? 0;
-                const isLow = allocated > 0 && allocated < (p.low_stock_threshold || 0);
-                const tagClass = !a ? 'ok' : isLow ? 'low' : (remaining <= (p.low_stock_threshold || 0) && remaining < allocated ? 'warn' : 'ok');
+                const productLow = isLowStock(p);
+                const runningLowToday = !!a && remaining <= (p.low_stock_threshold || 0) && remaining < allocated;
+                const tagClass = productLow ? 'low' : (runningLowToday ? 'warn' : 'ok');
                 return (
                   <div key={p.id} className={`produce-tag ${tagClass}`} data-testid={`alloc-tag-${p.id}`}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -381,7 +393,8 @@ export default function Allocate() {
                     </div>
                     <div style={{ marginTop: 8, fontSize: 12, color: 'var(--charcoal-soft)' }}>
                       {a ? `Value: ${fmtCurrency((Number(allocated) || 0) * (Number(p.unit_price) || 0))}` : 'Not scheduled to bring'}
-                      {isLow && <span className="text-red" style={{ marginLeft: 8, fontWeight: 600 }}>• below threshold</span>}
+                      {productLow && <span className="text-red" style={{ marginLeft: 8, fontWeight: 600 }}>• product stock low</span>}
+                      {!productLow && runningLowToday && <span className="text-red" style={{ marginLeft: 8, fontWeight: 600 }}>• running low today</span>}
                     </div>
                   </div>
                 );

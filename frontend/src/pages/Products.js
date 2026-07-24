@@ -2,15 +2,19 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { SectionHead, Empty, Modal } from '@/components/ui-market';
 import { fmtCurrency } from '@/lib/format';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { isLowStock } from '@/lib/inventory';
+import { Plus, Pencil, Trash2, PackagePlus } from 'lucide-react';
 
 const empty = { name: '', sku: '', unit: 'piece', unit_price: 0, unit_cost: '', current_stock: 0, low_stock_threshold: 0 };
+const emptyStock = { mode: 'add', quantity: '', reason: '' };
 
 export default function Products() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [stockModal, setStockModal] = useState(null);
+  const [adjusting, setAdjusting] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -29,11 +33,15 @@ export default function Products() {
         ...modal.form,
         unit_price: Number(modal.form.unit_price) || 0,
         unit_cost: modal.form.unit_cost === '' || modal.form.unit_cost == null ? null : Number(modal.form.unit_cost),
-        current_stock: Number(modal.form.current_stock) || 0,
         low_stock_threshold: Number(modal.form.low_stock_threshold) || 0,
       };
-      if (modal.id) await api.patch(`/products/${modal.id}`, payload);
-      else await api.post('/products', payload);
+      if (modal.id) {
+        delete payload.current_stock;
+        await api.patch(`/products/${modal.id}`, payload);
+      } else {
+        payload.current_stock = Number(modal.form.current_stock) || 0;
+        await api.post('/products', payload);
+      }
       setModal(null);
       await load();
     } catch (e) {
@@ -47,7 +55,22 @@ export default function Products() {
     load();
   };
 
-  const lowStock = (p) => (p.current_stock || 0) <= (p.low_stock_threshold || 0);
+  const adjustStock = async (e) => {
+    e.preventDefault();
+    setAdjusting(true);
+    try {
+      const payload = {
+        mode: stockModal.mode,
+        quantity: Number(stockModal.quantity) || 0,
+        reason: stockModal.reason || null,
+      };
+      await api.post(`/products/${stockModal.productId}/stock-adjustment`, payload);
+      setStockModal(null);
+      await load();
+    } catch (e) {
+      alert(e?.response?.data?.detail || 'Stock adjustment failed');
+    } finally { setAdjusting(false); }
+  };
 
   return (
     <div>
@@ -62,7 +85,7 @@ export default function Products() {
       {!loading && items.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }} data-testid="products-grid">
           {items.map(p => (
-            <div key={p.id} className={`produce-tag ${lowStock(p) ? 'low' : 'ok'}`} data-testid={`product-tag-${p.id}`}>
+            <div key={p.id} className={`produce-tag ${isLowStock(p) ? 'low' : 'ok'}`} data-testid={`product-tag-${p.id}`}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <div className="display-xs text-muted">{p.sku || '—'} · {p.unit || 'piece'}</div>
@@ -76,11 +99,12 @@ export default function Products() {
               <hr className="dashed-hr" />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                 <span>{fmtCurrency(p.unit_price)}</span>
-                <span style={{ color: lowStock(p) ? 'var(--stamp-red)' : 'var(--charcoal-soft)' }}>
-                  {lowStock(p) ? `Below ${p.low_stock_threshold}` : `Threshold: ${p.low_stock_threshold}`}
+                <span style={{ color: isLowStock(p) ? 'var(--stamp-red)' : 'var(--charcoal-soft)' }}>
+                  {isLowStock(p) ? `Below ${p.low_stock_threshold}` : `Threshold: ${p.low_stock_threshold}`}
                 </span>
               </div>
               <div style={{ marginTop: 10, display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                <button className="btn ghost tiny" onClick={() => setStockModal({ productId: p.id, name: p.name, ...emptyStock })} title="Restock / recount"><PackagePlus size={11} /></button>
                 <button className="btn ghost tiny" onClick={() => setModal({ id: p.id, form: { ...p } })}><Pencil size={11} /></button>
                 <button className="btn ghost tiny" onClick={() => del(p)}><Trash2 size={11} /></button>
               </div>
@@ -103,7 +127,16 @@ export default function Products() {
                 <label htmlFor="product-cost-input">Unit cost ($)<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
                 <input id="product-cost-input" type="number" min="0" step="0.01" value={modal.form.unit_cost ?? ''} onChange={e => setModal({ ...modal, form: { ...modal.form, unit_cost: e.target.value } })} placeholder="COGS per unit" data-testid="product-cost-input" />
               </div>
-              <div className="field"><label htmlFor="product-stock-input">Current stock</label><input id="product-stock-input" type="number" min="0" value={modal.form.current_stock} onChange={e => setModal({ ...modal, form: { ...modal.form, current_stock: e.target.value } })} data-testid="product-stock-input" /></div>
+              {modal.id ? (
+                <div className="field">
+                  <label>Current stock</label>
+                  <div style={{ padding: '8px 0', fontSize: 14 }} data-testid="product-stock-readonly">
+                    {modal.form.current_stock} <span style={{ fontSize: 11, color: 'var(--charcoal-soft)' }}>— use Restock/recount to change</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="field"><label htmlFor="product-stock-input">Current stock</label><input id="product-stock-input" type="number" min="0" value={modal.form.current_stock} onChange={e => setModal({ ...modal, form: { ...modal.form, current_stock: e.target.value } })} data-testid="product-stock-input" /></div>
+              )}
               <div className="field"><label htmlFor="product-low-threshold-input">Low threshold</label><input id="product-low-threshold-input" type="number" min="0" value={modal.form.low_stock_threshold} onChange={e => setModal({ ...modal, form: { ...modal.form, low_stock_threshold: e.target.value } })} /></div>
             </div>
             <div style={{ fontSize: 11, color: 'var(--charcoal-soft)', marginTop: -4 }}>
@@ -112,6 +145,34 @@ export default function Products() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
               <button type="button" className="btn outline" onClick={() => setModal(null)}>Cancel</button>
               <button type="submit" className="btn primary" disabled={saving} data-testid="product-save">{saving ? '…' : 'Save'}</button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal open={!!stockModal} onClose={() => setStockModal(null)} title={stockModal ? `Restock — ${stockModal.name}` : ''} testId="stock-adjustment-modal">
+        {stockModal && (
+          <form onSubmit={adjustStock} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="field">
+              <label htmlFor="stock-mode-select">Action</label>
+              <select id="stock-mode-select" value={stockModal.mode} onChange={e => setStockModal({ ...stockModal, mode: e.target.value })}>
+                <option value="add">Add stock (restock)</option>
+                <option value="set">Recount (set exact total)</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="stock-quantity-input">{stockModal.mode === 'add' ? 'Quantity to add' : 'New total on hand'}</label>
+              <input id="stock-quantity-input" type="number" min={stockModal.mode === 'add' ? '0.01' : '0'} step="any" required
+                value={stockModal.quantity} onChange={e => setStockModal({ ...stockModal, quantity: e.target.value })}
+                data-testid="stock-quantity-input" />
+            </div>
+            <div className="field">
+              <label htmlFor="stock-reason-input">Note<span style={{ fontSize: 10, color: 'var(--charcoal-soft)', marginLeft: 4 }}>optional</span></label>
+              <input id="stock-reason-input" value={stockModal.reason} onChange={e => setStockModal({ ...stockModal, reason: e.target.value })} placeholder="e.g. baked another batch" />
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+              <button type="button" className="btn outline" onClick={() => setStockModal(null)}>Cancel</button>
+              <button type="submit" className="btn primary" disabled={adjusting} data-testid="stock-adjustment-save">{adjusting ? '…' : 'Save'}</button>
             </div>
           </form>
         )}

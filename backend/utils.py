@@ -3,6 +3,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Iterable, Dict, Any, Optional
 import uuid
 
+from pymongo import ReturnDocument
+
 EXPIRING_WINDOW_DAYS = 30
 REMINDER_INTERVALS = [30, 14, 7]
 MAX_GENERATED_DATES = 104  # ~2 years of weekly dates
@@ -150,6 +152,72 @@ def units_sold_for(allocation: Dict[str, Any]) -> float:
     allocated = float(allocation.get('allocated_qty') or 0)
     remaining = float(allocation.get('remaining_qty') or 0)
     return max(0.0, allocated - remaining)
+
+
+async def apply_stock_delta(
+    db,
+    vendor_id: str,
+    product_id: str,
+    delta: float,
+    reason: str,
+    allocation_id: Optional[str] = None,
+    note: Optional[str] = None,
+) -> Optional[dict]:
+    """Atomically apply a signed stock delta to a product's current_stock via $inc,
+    clamping at 0 if the decrement would go negative, and log a StockEvent for audit.
+
+    Returns the updated product doc (without _id), or None if the product doesn't exist.
+    """
+    if delta == 0:
+        return await db.products.find_one({'id': product_id, 'vendor_id': vendor_id}, {'_id': 0})
+
+    applied_note = note
+    if delta >= 0:
+        doc = await db.products.find_one_and_update(
+            {'id': product_id, 'vendor_id': vendor_id},
+            {'$inc': {'current_stock': delta}},
+            projection={'_id': 0},
+            return_document=ReturnDocument.AFTER,
+        )
+    else:
+        doc = await db.products.find_one_and_update(
+            {'id': product_id, 'vendor_id': vendor_id, 'current_stock': {'$gte': -delta}},
+            {'$inc': {'current_stock': delta}},
+            projection={'_id': 0},
+            return_document=ReturnDocument.AFTER,
+        )
+        if doc is None:
+            existing = await db.products.find_one({'id': product_id, 'vendor_id': vendor_id})
+            if existing is None:
+                return None
+            shortfall = -delta - float(existing.get('current_stock') or 0)
+            doc = await db.products.find_one_and_update(
+                {'id': product_id, 'vendor_id': vendor_id},
+                {'$set': {'current_stock': 0}},
+                projection={'_id': 0},
+                return_document=ReturnDocument.AFTER,
+            )
+            applied_note = (
+                f'clamped at 0: requested decrement of {-delta}, only '
+                f'{float(existing.get("current_stock") or 0)} available (short by {shortfall})'
+            )
+
+    if doc is None:
+        return None
+
+    event = {
+        'id': uid(),
+        'vendor_id': vendor_id,
+        'product_id': product_id,
+        'change': delta,
+        'resulting_stock': doc.get('current_stock'),
+        'reason': reason,
+        'note': applied_note,
+        'allocation_id': allocation_id,
+        'created_at': iso_now(),
+    }
+    await db.stock_events.insert_one(event)
+    return doc
 
 
 def compute_pnl(
